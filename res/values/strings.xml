@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">NfcTagRW</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="readtag">Read NFC TAG</string>
+    <string name="writetag">Write NFC TAG</string>
+    <string name="exportjson">Export Json</string>
+    <string name="importjson">Import Json</string>
+    <string name="viewclient">View Client information</string>
+    <string name="entertext">Enter tag information here</string>
+
+</resources>
