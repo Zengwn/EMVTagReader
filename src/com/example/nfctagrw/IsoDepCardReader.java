@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import nz.geek.rhubarb.emvtools.EMVReader.CardReader;
 import android.nfc.tech.IsoDep;
-import android.nfc.tech.NfcA;
 
 public class IsoDepCardReader implements CardReader {
 

@@ -153,6 +153,15 @@ public class MainActivity extends Activity {
     public void onResume() {
         super.onResume();
         Log.i(TAG, "onResume");
+        try {
+            if (isIsoDep)
+                mIsoDep.close();
+            else
+                mNfca.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
         if (NfcAdapter.ACTION_TECH_DISCOVERED.equals(getIntent().getAction())) {
             processIntentRaw(getIntent());
@@ -164,6 +173,19 @@ public class MainActivity extends Activity {
 
         if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(getIntent().getAction())) {
             Log.i(TAG, "ACTION_NDEF_DISCOVERED");
+        }
+    }
+
+    public void onStop() {
+        super.onStop();
+        try {
+            if (isIsoDep)
+                mIsoDep.close();
+            else
+                mNfca.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
     }
 
@@ -188,20 +210,6 @@ public class MainActivity extends Activity {
         for (String tech : tagFromIntent.getTechList()) {
             mTagInfo.append(tech + "\n");
         }
-
-        // Parcelable[] rawMsgs = intent
-        // .getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
-        //
-        // if (rawMsgs != null) {
-        // NdefMessage[] msgs = new NdefMessage[rawMsgs.length];
-        // for (int i = 0; i < rawMsgs.length; i++) {
-        // msgs[i] = (NdefMessage) rawMsgs[i];
-        // Log.i(TAG, msgs[i].toString());
-        // }
-        // } else
-        // Log.i(TAG, "processIntentRaw rawMsgs = null");
-
-        // IsoDep isodep = IsoDep.get(tagFromIntent);
 
         if (isIsoDep) {
             mIsoDep = IsoDep.get(tagFromIntent);
@@ -230,80 +238,6 @@ public class MainActivity extends Activity {
 
         }).start();
     }
-
-    // String atqa = new String(nfca.getAtqa(),
-    // Charset.forName("US-ASCII"));
-    // mTagInfo.append("[ATQA:]" + bytesToHexString(nfca.getAtqa()) + "\n");
-    //
-    // mTagInfo.append("[SAK:]" + nfca.getSak() + "\n");
-    //
-
-    // nfca.close();
-    //
-    // isodep.connect();
-    // mTagInfo.append("[Historical bytes:]"
-    // + bytesToHexString(isodep.getHistoricalBytes()) + "\n");
-    // isodep.close();
-
-    //
-    // private void processIntentMifare(Intent intent) {
-    // Tag tagFromIntent = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-    // for (String tech : tagFromIntent.getTechList()) {
-    // System.out.println(tech);
-    // }
-    // boolean auth = false;
-    //
-    // MifareClassic mfc = MifareClassic.get(tagFromIntent);
-    // try {
-    // String metaInfo = "";
-    // // Enable I/O operations to the tag from this TagTechnology object.
-    // mfc.connect();
-    // int type = mfc.getType();
-    // int sectorCount = mfc.getSectorCount();
-    // String typeS = "";
-    // switch (type) {
-    // case MifareClassic.TYPE_CLASSIC:
-    // typeS = "TYPE_CLASSIC";
-    // break;
-    // case MifareClassic.TYPE_PLUS:
-    // typeS = "TYPE_PLUS";
-    // break;
-    // case MifareClassic.TYPE_PRO:
-    // typeS = "TYPE_PRO";
-    // break;
-    // case MifareClassic.TYPE_UNKNOWN:
-    // typeS = "TYPE_UNKNOWN";
-    // break;
-    // }
-    // metaInfo += "card type：" + typeS + "\n total" + sectorCount + "sector\n共"
-    // + mfc.getBlockCount() + "个块\n存储空间: " + mfc.getSize()
-    // + "B\n";
-    // for (int j = 0; j < sectorCount; j++) {
-    // // Authenticate a sector with key A.
-    // auth = mfc.authenticateSectorWithKeyA(j,
-    // MifareClassic.KEY_DEFAULT);
-    // int bCount;
-    // int bIndex;
-    // if (auth) {
-    // metaInfo += "Sector " + j + ":验证成功\n";
-    // bCount = mfc.getBlockCountInSector(j);
-    // bIndex = mfc.sectorToBlock(j);
-    // for (int i = 0; i < bCount; i++) {
-    // byte[] data = mfc.readBlock(bIndex);
-    // metaInfo += "Block " + bIndex + " : "
-    // + bytesToHexString(data) + "\n";
-    // bIndex++;
-    // }
-    // } else {
-    // metaInfo += "Sector " + j + ":验证失败\n";
-    // }
-    // }
-    // mTagInfo.setText(metaInfo);
-    // } catch (Exception e) {
-    // e.printStackTrace();
-    // }
-    // }
-    //
 
     public void writeTag(View view) {
         mTagInfo.append("not implemented");
