@@ -19,25 +19,32 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="com.example.nfctagrw.MainActivity"
-            android:label="@string/app_name" 
+            android:name=".MainActivity"
             android:clearTaskOnLaunch="true"
-            android:launchMode="singleTask">
+            android:configChanges="keyboardHidden|orientation"
+            android:launchMode="singleTask" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            
-             <intent-filter>
-                 <action android:name="android.nfc.action.TECH_DISCOVERED" />
+        </activity>
+
+        <activity-alias
+            android:name=".MainActivityTagDetectionAlias"
+            android:clearTaskOnLaunch="true"
+            android:configChanges="keyboardHidden|orientation"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:targetActivity="com.example.nfctagrw.MainActivity" >
+            <intent-filter>
+                <action android:name="android.nfc.action.TECH_DISCOVERED" />
             </intent-filter>
 
             <meta-data
                 android:name="android.nfc.action.TECH_DISCOVERED"
                 android:resource="@xml/filter_nfc" />
-        </activity>
-
-        
+        </activity-alias>
     </application>
 
 </manifest>

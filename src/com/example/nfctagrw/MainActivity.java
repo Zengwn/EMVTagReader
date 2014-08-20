@@ -7,7 +7,6 @@ import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.IntentFilter.MalformedMimeTypeException;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
@@ -35,6 +34,7 @@ public class MainActivity extends Activity {
     private byte[] mAdfInfo;
     private static final int CONNECT_OVER = 1;
     private static final int TRANS_OVER = 2;
+    private static final String ALIAS_MAINACTIVITY = ".MainActivityTagDetectionAlias";
 
     private Handler mHandler = new Handler() {
         @Override
@@ -132,27 +132,39 @@ public class MainActivity extends Activity {
 
         }
     };
-    
-    
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i(TAG, "onCreate");
+        // Log.i(TAG, "getClass() : " + getClass());
+        // Log.i(TAG, "getLocalClassName : " + getLocalClassName());
+        // Log.i(TAG, "getPackageName : " + getPackageName());
+        // Log.i(TAG, "getComponentName : " + getComponentName());
+        // Log.i(TAG, "getComponentName.getClassName : " +
+        // getComponentName().getClassName());
+        // Log.i(TAG, "getComponentName.getPackageName : " +
+        // getComponentName().getPackageName());
+        // Log.i(TAG, "getComponentName.getShortClassName : " +
+        // getComponentName().getShortClassName());
+        // Log.i(TAG, "getComponentName.toShortString : " +
+        // getComponentName().toShortString());
+
         setContentView(R.layout.activity_main);
 
-        mPendingIntent = PendingIntent.getActivity(
-                this, 0, new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
-        
-        IntentFilter nfcTech = new IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED);
-        
-        mFilters = new IntentFilter[] {
-                nfcTech,
-        };
+        mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this,
+                getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .setComponent(getComponentName()), 0);
+
+        IntentFilter nfcTech = new IntentFilter(
+                NfcAdapter.ACTION_TECH_DISCOVERED);
+
+        mFilters = new IntentFilter[] { nfcTech, };
 
         // Setup a tech list for all NfcF tags
         mTechLists = new String[][] { new String[] { NfcA.class.getName() },
                 new String[] { IsoDep.class.getName() } };
-        
+
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (mNfcAdapter == null) {
@@ -173,63 +185,45 @@ public class MainActivity extends Activity {
         super.onResume();
         Log.i(TAG, "onResume");
         Log.i(TAG, getIntent().toString());
-        
-        if (mNfcAdapter != null) mNfcAdapter.enableForegroundDispatch(this, mPendingIntent, mFilters,
-                mTechLists);
-        try {
-            if (isIsoDep) {
-                if (mIsoDep != null)
-                    mIsoDep.close();
-            } else {
-                if (mNfca != null)
-                    mNfca.close();
-            }
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
 
-        if (NfcAdapter.ACTION_TECH_DISCOVERED.equals(getIntent().getAction())) {
-            processIntentRaw(getIntent());
-        }
+        if (mNfcAdapter != null)
+            mNfcAdapter.enableForegroundDispatch(this, mPendingIntent,
+                    mFilters, mTechLists);
 
-        if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(getIntent().getAction())) {
-            Log.i(TAG, "ACTION_TAG_DISCOVERED");
-        }
-
-        if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(getIntent().getAction())) {
-            Log.i(TAG, "ACTION_NDEF_DISCOVERED");
+        Intent intent = getIntent();
+        if (intent.getComponent().getShortClassName()
+                .equals(ALIAS_MAINACTIVITY)) {
+            processIntentRaw(intent);
         }
     }
 
-    public void onStop() {
-        super.onStop();
-        try {
-            if (isIsoDep) {
-                if (mIsoDep != null)
-                    mIsoDep.close();
-            } else {
-                if (mNfca != null)
-                    mNfca.close();
-            }
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-    
     public void onPause() {
         super.onPause();
+        Log.i(TAG, "onPause");
         mNfcAdapter.disableForegroundDispatch(this);
+        try {
+            if (isIsoDep) {
+                if (mIsoDep != null)
+                    mIsoDep.close();
+            } else {
+                if (mNfca != null)
+                    mNfca.close();
+            }
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
-    
     public void onNewIntent(Intent intent) {
-        Tag tagFromIntent = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-        //do something with tagFromIntent
-        Log.i(TAG, tagFromIntent.toString());
+        Log.i(TAG, "onNewIntent");
+        Log.i(TAG, intent.toString());
+        if (!intent.getComponent().getShortClassName()
+                .equals(ALIAS_MAINACTIVITY)) {
+            processIntentRaw(intent);
+        }
     }
-    
+
     private String bytesToHexString(byte[] src) {
         StringBuilder stringBuilder = new StringBuilder("0x");
         if (src == null || src.length <= 0) {
