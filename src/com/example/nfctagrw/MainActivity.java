@@ -5,6 +5,7 @@ import java.io.IOException;
 import nz.geek.rhubarb.emvtools.EMVReader;
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.nfc.NfcAdapter;
@@ -23,6 +24,7 @@ public class MainActivity extends Activity {
 
     private NfcAdapter mNfcAdapter;
     private PendingIntent mPendingIntent;
+    private ProgressDialog mProgressDialog;
     private IntentFilter[] mFilters;
     private String[][] mTechLists;
     private EMVReader mEmvreader;
@@ -34,6 +36,7 @@ public class MainActivity extends Activity {
     private byte[] mAdfInfo;
     private static final int CONNECT_OVER = 1;
     private static final int TRANS_OVER = 2;
+    private static final int DIALOG_CANCEL = 3;
     private static final String ALIAS_MAINACTIVITY = ".MainActivityTagDetectionAlias";
 
     private Handler mHandler = new Handler() {
@@ -41,7 +44,8 @@ public class MainActivity extends Activity {
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case CONNECT_OVER:
-                    Log.i(TAG, "connect done");
+                    Log.i(TAG, "Connected");
+                    Log.i(TAG, "");
                     new Thread(new Runnable() {
 
                         @Override
@@ -62,7 +66,6 @@ public class MainActivity extends Activity {
 
                             mHandler.sendEmptyMessage(TRANS_OVER);
                         }
-
                     }).start();
 
                     break;
@@ -113,19 +116,32 @@ public class MainActivity extends Activity {
                                 mAdfInfo);
                     }
                     mEmvreader.doTrace = true;
-                    try {
-                        mEmvreader.read();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                    Log.i(TAG, "Issuer " + mEmvreader.issuer);
-                    Log.i(TAG, "Result " + mEmvreader.pan + ",Y="
-                            + mEmvreader.expiryYear + ",M="
-                            + mEmvreader.expiryMonth);
 
+                    new Thread(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            // TODO Auto-generated method stub
+                            try {
+                                mEmvreader.read();
+
+                                Log.i(TAG, "Issuer " + mEmvreader.issuer);
+                                Log.i(TAG, "Result " + mEmvreader.pan + ",Y="
+                                        + mEmvreader.expiryYear + ",M="
+                                        + mEmvreader.expiryMonth);
+
+                                mHandler.sendEmptyMessage(DIALOG_CANCEL);
+                            } catch (IOException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+                        }
+
+                    }).start();
                     break;
-
+                case DIALOG_CANCEL:
+                    Log.i(TAG, "Cancel progress dialog");
+                    stopProgressDialog();
                 default:
                     break;
             }
@@ -243,6 +259,8 @@ public class MainActivity extends Activity {
         Tag tagFromIntent = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
         Log.i(TAG, tagFromIntent.toString());
 
+        startProgressDialog();
+
         for (String tech : tagFromIntent.getTechList()) {
             // mTagInfo.append(tech + "\n");
         }
@@ -278,4 +296,39 @@ public class MainActivity extends Activity {
     public void closeApp(View view) {
         finish();
     }
+
+    private void startProgressDialog() {
+        Log.i(TAG, "Start progressDialog");
+        mProgressDialog = new ProgressDialog(MainActivity.this);
+        mProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        mProgressDialog.setMessage("Reading Tag...");
+        mProgressDialog.setIndeterminate(false);
+        mProgressDialog.setCancelable(false);
+
+        mProgressDialog.show();
+
+        new Thread() {
+            public void run() {
+                int count = 0;
+                while (count <= 40) {
+                    mProgressDialog.setProgress(count++);
+                    try {
+                        Thread.sleep(100);
+                    } catch (Exception e) {
+                        Log.i(TAG, "ProgressDialog thread monitor error");
+                    }
+                }
+                mHandler.sendEmptyMessage(DIALOG_CANCEL);
+            }
+        }.start();
+    }
+
+    private void stopProgressDialog() {
+        if (mProgressDialog != null) {
+            mProgressDialog.cancel();
+        } else {
+            Log.i(TAG, "ProgressDialog is NULL");
+        }
+    }
+
 }
