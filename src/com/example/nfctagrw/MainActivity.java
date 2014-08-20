@@ -177,7 +177,7 @@ public class MainActivity extends Activity {
 
         mFilters = new IntentFilter[] { nfcTech, };
 
-        // Setup a tech list for all NfcF tags
+        // Setup a tech list for all NfcA/IsoDep tags
         mTechLists = new String[][] { new String[] { NfcA.class.getName() },
                 new String[] { IsoDep.class.getName() } };
 
@@ -195,6 +195,12 @@ public class MainActivity extends Activity {
             return;
         }
 
+        Intent intent = getIntent();
+        if (intent.getComponent().getShortClassName()
+                .equals(ALIAS_MAINACTIVITY)) {
+            processIntentRaw(intent);
+        }
+
     }
 
     public void onResume() {
@@ -205,12 +211,6 @@ public class MainActivity extends Activity {
         if (mNfcAdapter != null)
             mNfcAdapter.enableForegroundDispatch(this, mPendingIntent,
                     mFilters, mTechLists);
-
-        Intent intent = getIntent();
-        if (intent.getComponent().getShortClassName()
-                .equals(ALIAS_MAINACTIVITY)) {
-            processIntentRaw(intent);
-        }
     }
 
     public void onPause() {
@@ -233,11 +233,7 @@ public class MainActivity extends Activity {
 
     public void onNewIntent(Intent intent) {
         Log.i(TAG, "onNewIntent");
-        Log.i(TAG, intent.toString());
-        if (!intent.getComponent().getShortClassName()
-                .equals(ALIAS_MAINACTIVITY)) {
-            processIntentRaw(intent);
-        }
+        processIntentRaw(intent);
     }
 
     private String bytesToHexString(byte[] src) {
