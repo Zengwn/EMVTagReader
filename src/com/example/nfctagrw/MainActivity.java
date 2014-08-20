@@ -4,7 +4,10 @@ import java.io.IOException;
 
 import nz.geek.rhubarb.emvtools.EMVReader;
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.IntentFilter.MalformedMimeTypeException;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
@@ -14,13 +17,15 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
     public static final String TAG = MainActivity.class.getSimpleName();
 
     private NfcAdapter mNfcAdapter;
+    private PendingIntent mPendingIntent;
+    private IntentFilter[] mFilters;
+    private String[][] mTechLists;
     private EMVReader mEmvreader;
     private NfcaCardReader mNfcaCardReader;
     private IsoDepCardReader mIsoDepCardReader;
@@ -135,6 +140,19 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mPendingIntent = PendingIntent.getActivity(
+                this, 0, new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
+        
+        IntentFilter nfcTech = new IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED);
+        
+        mFilters = new IntentFilter[] {
+                nfcTech,
+        };
+
+        // Setup a tech list for all NfcF tags
+        mTechLists = new String[][] { new String[] { NfcA.class.getName() },
+                new String[] { IsoDep.class.getName() } };
+        
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (mNfcAdapter == null) {
@@ -155,6 +173,9 @@ public class MainActivity extends Activity {
         super.onResume();
         Log.i(TAG, "onResume");
         Log.i(TAG, getIntent().toString());
+        
+        if (mNfcAdapter != null) mNfcAdapter.enableForegroundDispatch(this, mPendingIntent, mFilters,
+                mTechLists);
         try {
             if (isIsoDep) {
                 if (mIsoDep != null)
@@ -196,7 +217,19 @@ public class MainActivity extends Activity {
             e.printStackTrace();
         }
     }
+    
+    public void onPause() {
+        super.onPause();
+        mNfcAdapter.disableForegroundDispatch(this);
+    }
 
+    
+    public void onNewIntent(Intent intent) {
+        Tag tagFromIntent = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+        //do something with tagFromIntent
+        Log.i(TAG, tagFromIntent.toString());
+    }
+    
     private String bytesToHexString(byte[] src) {
         StringBuilder stringBuilder = new StringBuilder("0x");
         if (src == null || src.length <= 0) {
@@ -214,6 +247,7 @@ public class MainActivity extends Activity {
     private void processIntentRaw(Intent intent) {
         Log.i(TAG, "processIntentRaw");
         Tag tagFromIntent = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+        Log.i(TAG, tagFromIntent.toString());
 
         for (String tech : tagFromIntent.getTechList()) {
             // mTagInfo.append(tech + "\n");
