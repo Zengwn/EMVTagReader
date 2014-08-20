@@ -25,8 +25,8 @@ public class MainActivity extends Activity {
     private EMVReader mEmvreader;
     private NfcaCardReader mNfcaCardReader;
     private IsoDepCardReader mIsoDepCardReader;
-    private NfcA mNfca;
-    private IsoDep mIsoDep;
+    private NfcA mNfca = null;
+    private IsoDep mIsoDep = null;
     private boolean isIsoDep = true;
     private byte[] mAdfInfo;
     private static final int CONNECT_OVER = 1;
@@ -93,6 +93,13 @@ public class MainActivity extends Activity {
                     // Log.i(TAG, mAdfInfo.toString());
 
                     if (isIsoDep) {
+                        try {
+                            byte[] mAdfInfo = mIsoDep.transceive(mEmvreader.SELECT_PPSE);
+                            Log.i(TAG, "mAdfInfo =  " + bytesToHexString(mAdfInfo));
+                        } catch (IOException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
                         mEmvreader = new EMVReader(mIsoDepCardReader, null /*
                                                                             * EMVReader
                                                                             * .
@@ -153,11 +160,15 @@ public class MainActivity extends Activity {
     public void onResume() {
         super.onResume();
         Log.i(TAG, "onResume");
+        Log.i(TAG, getIntent().toString());
         try {
-            if (isIsoDep)
-                mIsoDep.close();
-            else
-                mNfca.close();
+            if (isIsoDep) {
+                if (mIsoDep != null)
+                    mIsoDep.close();
+            } else {
+                if (mNfca != null)
+                    mNfca.close();
+            }
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -179,10 +190,13 @@ public class MainActivity extends Activity {
     public void onStop() {
         super.onStop();
         try {
-            if (isIsoDep)
-                mIsoDep.close();
-            else
-                mNfca.close();
+            if (isIsoDep) {
+                if (mIsoDep != null)
+                    mIsoDep.close();
+            } else {
+                if (mNfca != null)
+                    mNfca.close();
+            }
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
