@@ -14,14 +14,13 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
-import android.widget.TextView;
+import android.widget.Button;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
     public static final String TAG = MainActivity.class.getSimpleName();
 
     private NfcAdapter mNfcAdapter;
-    private TextView mTagInfo;
     private EMVReader mEmvreader;
     private NfcaCardReader mNfcaCardReader;
     private IsoDepCardReader mIsoDepCardReader;
@@ -94,24 +93,18 @@ public class MainActivity extends Activity {
 
                     if (isIsoDep) {
                         try {
-                            byte[] mAdfInfo = mIsoDep.transceive(mEmvreader.SELECT_PPSE);
-                            Log.i(TAG, "mAdfInfo =  " + bytesToHexString(mAdfInfo));
+                            byte[] mAdfInfo = mIsoDep
+                                    .transceive(mEmvreader.SELECT_PPSE);
+                            Log.i(TAG, "mAdfInfo =  "
+                                    + bytesToHexString(mAdfInfo));
                         } catch (IOException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
                         }
-                        mEmvreader = new EMVReader(mIsoDepCardReader, null /*
-                                                                            * EMVReader
-                                                                            * .
-                                                                            * AID_PPSE
-                                                                            */,
+                        mEmvreader = new EMVReader(mIsoDepCardReader, null,
                                 mAdfInfo);
                     } else {
-                        mEmvreader = new EMVReader(mNfcaCardReader, null /*
-                                                                          * EMVReader
-                                                                          * .
-                                                                          * AID_PPSE
-                                                                          */,
+                        mEmvreader = new EMVReader(mNfcaCardReader, null,
                                 mAdfInfo);
                     }
                     mEmvreader.doTrace = true;
@@ -134,13 +127,14 @@ public class MainActivity extends Activity {
 
         }
     };
+    
+    
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mTagInfo = (TextView) findViewById(R.id.tagInfo);
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (mNfcAdapter == null) {
@@ -151,7 +145,7 @@ public class MainActivity extends Activity {
         }
 
         if (!mNfcAdapter.isEnabled()) {
-            mTagInfo.append("NFC is not enabled");
+            // mTagInfo.append("NFC is not enabled");
             return;
         }
 
@@ -222,7 +216,7 @@ public class MainActivity extends Activity {
         Tag tagFromIntent = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
         for (String tech : tagFromIntent.getTechList()) {
-            mTagInfo.append(tech + "\n");
+            // mTagInfo.append(tech + "\n");
         }
 
         if (isIsoDep) {
@@ -253,15 +247,7 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    public void writeTag(View view) {
-        mTagInfo.append("not implemented");
-    }
-
-    public void exportJson(View view) {
-        mTagInfo.append("not implemented");
-    }
-
-    public void importJson(View view) {
-        mTagInfo.append("not implemented");
+    public void closeApp(View view) {
+        finish();
     }
 }
