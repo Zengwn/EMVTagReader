@@ -85,8 +85,10 @@ public class MainActivity extends Activity {
                         try {
                             byte[] mAdfInfo = mIsoDep
                                     .transceive(mEmvreader.SELECT_PPSE);
-                            Log.i(TAG, "mAdfInfo =  "
-                                    + HexTool.bytesToHexString(mAdfInfo));
+                            Log.i(TAG,
+                                    "mAdfInfo =  "
+                                            + HexTool
+                                                    .bytesToHexString(mAdfInfo));
                         } catch (IOException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
@@ -233,8 +235,6 @@ public class MainActivity extends Activity {
         processIntentRaw(intent);
     }
 
-
-
     private void processIntentRaw(Intent intent) {
         Log.i(TAG, "processIntentRaw");
         Tag tagFromIntent = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
@@ -275,7 +275,7 @@ public class MainActivity extends Activity {
     }
 
     public void closeApp(View view) {
-        // finish();
+        finish();
     }
 
     private void startViewer() {
