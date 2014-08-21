@@ -22,6 +22,7 @@ import android.nfc.tech.NfcA;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Vibrator;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
@@ -30,6 +31,7 @@ public class MainActivity extends Activity {
     public static final String TAG = MainActivity.class.getSimpleName();
 
     private NfcAdapter mNfcAdapter;
+    private Vibrator mVibrator;
     private PendingIntent mPendingIntent;
     private ProgressDialog mProgressDialog;
     private IntentFilter[] mFilters;
@@ -151,22 +153,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
         Log.i(TAG, "onCreate");
-        // Log.i(TAG, "getClass() : " + getClass());
-        // Log.i(TAG, "getLocalClassName : " + getLocalClassName());
-        // Log.i(TAG, "getPackageName : " + getPackageName());
-        // Log.i(TAG, "getComponentName : " + getComponentName());
-        // Log.i(TAG, "getComponentName.getClassName : " +
-        // getComponentName().getClassName());
-        // Log.i(TAG, "getComponentName.getPackageName : " +
-        // getComponentName().getPackageName());
-        // Log.i(TAG, "getComponentName.getShortClassName : " +
-        // getComponentName().getShortClassName());
-        // Log.i(TAG, "getComponentName.toShortString : " +
-        // getComponentName().toShortString());
-
         setContentView(R.layout.activity_main);
 
+        mVibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);   
         mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this,
                 getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .setComponent(getComponentName()), 0);
@@ -280,6 +271,7 @@ public class MainActivity extends Activity {
 
     private void startViewer() {
         Log.i(TAG, "startViewer with boolean :" + mEMVReadSucceed);
+        mVibrator.vibrate(100); 
         Intent intent = new Intent(this, TagInfoViewer.class).putExtra(
                 INTENT_MAINACTIVITY, mEMVReadSucceed);
         startActivity(intent);
