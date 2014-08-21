@@ -8,7 +8,13 @@ import com.example.nfctagrw.MyApplication;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.nfc.NfcAdapter;
+import android.nfc.tech.IsoDep;
+import android.nfc.tech.NfcA;
 import android.os.Bundle;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -22,6 +28,10 @@ public class TagInfoViewer extends Activity {
     private TextView mCardIssur;
     private TextView mCardPan;
     private TextView mCardExpriyDate;
+    private PendingIntent mPendingIntent;
+    private NfcAdapter mNfcAdapter;
+    private IntentFilter[] mFilters;
+    private String[][] mTechLists;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,13 +43,33 @@ public class TagInfoViewer extends Activity {
                 MainActivity.INTENT_MAINACTIVITY, true));
 
         initControl();
+        
+        mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this,
+                getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .setComponent(getComponentName()), 0);
+        
+        IntentFilter nfcTech = new IntentFilter(
+                NfcAdapter.ACTION_TECH_DISCOVERED);
+
+        mFilters = new IntentFilter[] { nfcTech, };
+        
+        mTechLists = new String[][] { new String[] { NfcA.class.getName() },
+                new String[] { IsoDep.class.getName() } };
+
+        mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
     }
 
     public void onResume() {
         super.onResume();
         initContent();
+        mNfcAdapter.enableForegroundDispatch(this, mPendingIntent,
+                mFilters, mTechLists);
     }
 
+    public void onPause(){
+        super.onPause();
+        mNfcAdapter.disableForegroundDispatch(this);
+    }
     public void showStateDialog(boolean good) {
         String msg;
 
