@@ -2,12 +2,12 @@
 <resources>
 
     <string name="app_name">NfcTagRW</string>
-    <string name="hello_world">Hello world!</string>
     <string name="readtag">Read NFC TAG</string>
     <string name="writetag">Write NFC TAG</string>
     <string name="exportjson">Export Json</string>
     <string name="importjson">Import Json</string>
     <string name="viewclient">View Client information</string>
     <string name="entertext">Enter tag information here</string>
-
+    <string name="title_activity_tag_info_viewer">TagInfoViewer</string>
+	<string name="scan_a_tag">Scan a tag...</string>
 </resources>

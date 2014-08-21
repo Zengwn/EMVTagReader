@@ -18,7 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>
  *
  */
- 
+
 /* 
  * $Id: EMVReader.java 1 2014-06-07 22:37:15Z rhubarb-geek-nz $
  */
@@ -33,747 +33,739 @@ import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.example.nfctagrw.data.EMVCardEntity;
+
 /**
- *
+ * 
  * @author rogerb
  */
-public class EMVReader 
-{
-    public boolean doTrace=false;
-    final static String UTF8="utf-8";
-    public static final byte [] SELECT_PPSE={
-        0x00,(byte)0xA4,0x04,0x00,0x0E,
-        '2','P','A','Y','.','S','Y','S','.','D','D','F','0','1',0x00
-    };
-    public static final byte [] AID_PPSE={
-        '2','P','A','Y','.','S','Y','S','.','D','D','F','0','1'    
-    };
-    public static final byte [] SELECT_PSE={
-        0x00,(byte)0xA4,0x04,0x00,0x0E,
-        '1','P','A','Y','.','S','Y','S','.','D','D','F','0','1'
-    };
-    public static final byte [] AID_PSE={
-        '1','P','A','Y','.','S','Y','S','.','D','D','F','0','1'    
-    };
+public class EMVReader {
+    /* output card information */
+    private EMVCardEntity mEmvCardEntity;
 
-    private int getTagLen(byte[] data, int offset, int len) 
-    {
-        int r=1;
-        if ((data[offset]&0x1f)==0x1f)
-        {
-            r=2;
+    public boolean doTrace = false;
+    final static String UTF8 = "utf-8";
+    public static final byte[] SELECT_PPSE = { 0x00, (byte) 0xA4, 0x04, 0x00,
+            0x0E, '2', 'P', 'A', 'Y', '.', 'S', 'Y', 'S', '.', 'D', 'D', 'F',
+            '0', '1', 0x00 };
+    public static final byte[] AID_PPSE = { '2', 'P', 'A', 'Y', '.', 'S', 'Y',
+            'S', '.', 'D', 'D', 'F', '0', '1' };
+    public static final byte[] SELECT_PSE = { 0x00, (byte) 0xA4, 0x04, 0x00,
+            0x0E, '1', 'P', 'A', 'Y', '.', 'S', 'Y', 'S', '.', 'D', 'D', 'F',
+            '0', '1' };
+    public static final byte[] AID_PSE = { '1', 'P', 'A', 'Y', '.', 'S', 'Y',
+            'S', '.', 'D', 'D', 'F', '0', '1' };
+
+    public EMVCardEntity getEMVCardEntity() {
+        return mEmvCardEntity;
+    }
+
+    private int getTagLen(byte[] data, int offset, int len) {
+        int r = 1;
+        if ((data[offset] & 0x1f) == 0x1f) {
+            r = 2;
         }
         return r;
     }
 
-    private int getTag(byte[] data, int offset, int tagLen) 
-    {
+    private int getTag(byte[] data, int offset, int tagLen) {
         return BinaryTools.readInt(data, offset, tagLen);
     }
 
-    private int getLenLen(byte[] data, int offset, int len) 
-    {
-        int r=0;
-        int c=(0xff & data[offset]);
-        if (c < 0x80)
-        {
-            r=1;
-        }
-        else
-        {
-            switch (c)
-            {
+    private int getLenLen(byte[] data, int offset, int len) {
+        int r = 0;
+        int c = (0xff & data[offset]);
+        if (c < 0x80) {
+            r = 1;
+        } else {
+            switch (c) {
                 case 0x81:
-                    r=2;
+                    r = 2;
                     break;
                 case 0x82:
-                    r=3;
+                    r = 3;
                     break;
             }
-        }   
+        }
         return r;
     }
 
-    private int getLen(byte[] data, int offset, int lenLen) 
-    {
-        int r=0;
-        
-        switch (lenLen)
-        {
+    private int getLen(byte[] data, int offset, int lenLen) {
+        int r = 0;
+
+        switch (lenLen) {
             case 1:
-                r=(0x7f & data[offset]);
+                r = (0x7f & data[offset]);
                 break;
             case 2:
-                r=(0xff & data[offset+1]);
+                r = (0xff & data[offset + 1]);
                 break;
             case 3:
-                r=BinaryTools.readInt(data,offset+1, 2);
+                r = BinaryTools.readInt(data, offset + 1, 2);
                 break;
         }
         return r;
     }
 
-    public class TLV
-    {
-        public int type,length;
-        public byte [] value;
+    public class TLV {
+        public int type, length;
+        public byte[] value;
     }
-    
+
     final CardReader reader;
-    final byte [] adf;
-    public Integer expiryMonth,expiryYear;
-    public String pan;    
-    
-    public byte [] aid;
+    final byte[] adf;
+    public Integer expiryMonth, expiryYear;
+    public String pan;
+
+    public byte[] aid;
     public String issuer;
-    byte [] PDOL;
-    
-    public interface CardReader
-    {
-        public byte [] transceive(byte [] apdu) throws IOException;
+    byte[] PDOL;
+
+    public interface CardReader {
+        public byte[] transceive(byte[] apdu) throws IOException;
     }
-    
-    public EMVReader(CardReader r,byte [] b,byte [] a)
-    {
-        reader=r;
-        aid=b;
-        adf=a;
+
+    public EMVReader(CardReader r, byte[] b, byte[] a) {
+        reader = r;
+        aid = b;
+        adf = a;
+        mEmvCardEntity = new EMVCardEntity();
     }
-    
-    interface EnumCallback
-    {
-        public boolean found(int tag,int len,byte [] data,int offset) throws IOException;
+
+    interface EnumCallback {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException;
     }
-    
-    class ReadPDOData implements EnumCallback
-    {
+
+    class ReadPDOData implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("PDO %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("PDO %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
                 case 0x57:
-                    result=readTrack2Equivalent(data,offset,len);
+                    mEmvCardEntity.setDataEntity("PDODATA", "0x57", len, data);
+                    result = readTrack2Equivalent(data, offset, len);
                     break;
                 case 0x94:
-                    result=readAFL(data,offset,len);
+                    mEmvCardEntity.setDataEntity("PDODATA", "0x94", len, data);
+                    result = readAFL(data, offset, len);
                     break;
             }
-            
+
             return result;
         }
     }
-    
-    class ReadPDO implements EnumCallback
-    {
+
+    class ReadPDO implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("PDO %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("PDO %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
                 case 0x70:
                 case 0x77:
-                    result=parse(new ReadPDOData(),data,offset,len);
+                    mEmvCardEntity.setDataEntity("PDO", "0x70/0x77: " + tag,
+                            len, data);
+                    result = parse(new ReadPDOData(), data, offset, len);
                     break;
                 case 0x80:
-                    result=readAFL(data,offset+2,len-2);
+                    mEmvCardEntity.setDataEntity("PDO", "0x80", len, data);
+                    result = readAFL(data, offset + 2, len - 2);
                     break;
             }
-            
+
             return result;
         }
     }
-                        
-    class ReadAppFCI implements EnumCallback
-    {
+
+    class ReadAppFCI implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("appFCI %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-                        
-            switch (tag)
-            {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("appFCI %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
                 case 0x50:
-                    try 
-                    {
-                        issuer=new String(data,offset,len,UTF8);
-                    } 
-                    catch (UnsupportedEncodingException ex) 
-                    {
-                        Logger.getLogger(EMVReader.class.getName()).log(Level.SEVERE, null, ex);
+                    try {
+                        mEmvCardEntity.setDataEntity("APPFCI", "0x50", len,
+                                data);
+                        issuer = new String(data, offset, len, UTF8);
+                        mEmvCardEntity.issuer = issuer;
+                    } catch (UnsupportedEncodingException ex) {
+                        Logger.getLogger(EMVReader.class.getName()).log(
+                                Level.SEVERE, null, ex);
                     }
                     break;
                 case 0x9F38:
-                    PDOL=BinaryTools.bytesFrom(data,offset, len);
+                    mEmvCardEntity.setDataEntity("APPFCI", "0x9F38", len, data);
+                    PDOL = BinaryTools.bytesFrom(data, offset, len);
                     break;
             }
             return result;
-        }   
+        }
 
-        private boolean read() throws IOException 
-        {
-            boolean result=true;
-            byte [] pdolData=null;
-            
-            if (PDOL!=null)
-            {
-                int pdolLen=getPDOLlength(PDOL,0,PDOL.length);
-                                
-                pdolData=new byte[pdolLen+2];
-                pdolData[0]=(byte)0x83;
-                pdolData[1]=(byte)pdolLen;
-                
-                fillPDOL(PDOL,0,PDOL.length,pdolData,2);
+        private boolean read() throws IOException {
+            boolean result = true;
+            byte[] pdolData = null;
+
+            if (PDOL != null) {
+                int pdolLen = getPDOLlength(PDOL, 0, PDOL.length);
+
+                pdolData = new byte[pdolLen + 2];
+                pdolData[0] = (byte) 0x83;
+                pdolData[1] = (byte) pdolLen;
+
+                fillPDOL(PDOL, 0, PDOL.length, pdolData, 2);
             }
-           
-            if (pdolData==null)
-            {
-                pdolData=new byte[]{(byte)0x83,0x00};
+
+            if (pdolData == null) {
+                pdolData = new byte[] { (byte) 0x83, 0x00 };
             }
-            
-            byte [] apdu=BinaryTools.catenate(new byte[][]{
-                    new byte[]{(byte)0x80,(byte)0xa8,0x00,0x00,(byte)pdolData.length},
-                    pdolData,
-                    new byte[]{0}
-                    });
-            
-            byte [] resp=reader.transceive(apdu);
-            
-            if ((resp!=null)&&(resp.length>2))
-            {
-                ReadPDO pdo=new ReadPDO();
-                
-                result=parse(pdo,resp,0,resp.length-2);
+
+            byte[] apdu = BinaryTools.catenate(new byte[][] {
+                    new byte[] { (byte) 0x80, (byte) 0xa8, 0x00, 0x00,
+                            (byte) pdolData.length }, pdolData,
+                    new byte[] { 0 } });
+
+            byte[] resp = reader.transceive(apdu);
+
+            if ((resp != null) && (resp.length > 2)) {
+                ReadPDO pdo = new ReadPDO();
+
+                result = parse(pdo, resp, 0, resp.length - 2);
+            }else {
+                throw new IOException("Error in ReadAppFCI/ read()/ transceive apdu"
+                        + "apdu:" + apdu + "resp: " + resp);
             }
-                        
+
             return result;
         }
     }
-    
-    class ReadApplicationDataFileRecord implements EnumCallback
-    {
+
+    class ReadApplicationDataFileRecord implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("app %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
-                case 0xA5:
-                    {
-                        ReadAppFCI app = new ReadAppFCI();
-                        result=parse(app,data,offset,len);
-                        
-                        if (result)
-                        {
-                            result=app.read();
-                        }
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("app %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
+                case 0xA5: {
+                    mEmvCardEntity.setDataEntity("ADFR", "0xA5", len, data);
+                    ReadAppFCI app = new ReadAppFCI();
+                    result = parse(app, data, offset, len);
+
+                    if (result) {
+                        result = app.read();
                     }
+                }
                     break;
             }
-            
+
             return result;
-        }   
+        }
     }
-    
-    class ReadApplicationDataFile implements EnumCallback
-    {
+
+    class ReadApplicationDataFile implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("app %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("app %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
                 case 0x6F:
                 case 0x70:
-                    result=parse(new ReadApplicationDataFileRecord(),data,offset,len);
+                    mEmvCardEntity.setDataEntity("ADF", "0x6F/0x70: " + tag,
+                            len, data);
+                    result = parse(new ReadApplicationDataFileRecord(), data,
+                            offset, len);
                     break;
             }
-            
+
             return result;
-        }   
+        }
     }
-    
-    class ReadApplicationTemplate  implements EnumCallback
-    {
+
+    class ReadApplicationTemplate implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("appTemp %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("appTemp %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
                 case 0x4F:
-                    aid=BinaryTools.bytesFrom(data,offset, len);
+                    mEmvCardEntity.setDataEntity("AppTemp", "0x4F", len, data);
+                    aid = BinaryTools.bytesFrom(data, offset, len);
+                    mEmvCardEntity.aid = aid;
                     break;
                 case 0x50:
-                    try 
-                    {
-                        issuer=new String(data,offset,len,UTF8);
-                    } 
-                    catch (UnsupportedEncodingException ex) 
-                    {
-                        Logger.getLogger(EMVReader.class.getName()).log(Level.SEVERE, null, ex);
+                    try {
+                        mEmvCardEntity.setDataEntity("AppTemp", "0x50", len,
+                                data);
+                        issuer = new String(data, offset, len, UTF8);
+                        mEmvCardEntity.issuer = issuer;
+                    } catch (UnsupportedEncodingException ex) {
+                        Logger.getLogger(EMVReader.class.getName()).log(
+                                Level.SEVERE, null, ex);
                     }
                     break;
             }
-            
-            return result;
-        }   
 
-        boolean read() throws IOException 
-        {
-            boolean result=true;
-            byte [] apdu=BinaryTools.catenate(new byte[][]{
-                    BinaryTools.bytesFrom(SELECT_PPSE,0,4),
-                    new byte[]{(byte)aid.length},
-                    aid,
-                    new byte[]{0}
-                    });
-            byte [] resp=reader.transceive(apdu);
-            
-            if ((resp!=null)&&(resp.length>2))
-            {
-                result=parse(new ReadApplicationDataFile(),resp,0,resp.length-2);
+            return result;
+        }
+
+        boolean read() throws IOException {
+            boolean result = true;
+            byte[] apdu = BinaryTools.catenate(new byte[][] {
+                    BinaryTools.bytesFrom(SELECT_PPSE, 0, 4),
+                    new byte[] { (byte) aid.length }, aid, new byte[] { 0 } });
+            byte[] resp = reader.transceive(apdu);
+
+            if ((resp != null) && (resp.length > 2)) {
+                result = parse(new ReadApplicationDataFile(), resp, 0,
+                        resp.length - 2);
+            } else {
+                throw new IOException(
+                        "Error in ReadApplicationTemplate/read():" + "apdu:"
+                                + apdu + "resp: " + resp);
             }
-            
+
             return result;
         }
     }
-    
-    class ReadFCIIssuerDiscretionaryData implements EnumCallback
-    {
+
+    class ReadFCIIssuerDiscretionaryData implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("FCIidd %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
-                case 0x61:
-                    {
-                        ReadApplicationTemplate app = new ReadApplicationTemplate();
-                        result=parse(app,data,offset,len);
-                        
-                        if (result)
-                        {
-                            result=app.read();
-                        }
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("FCIidd %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
+                case 0x61: {
+                    mEmvCardEntity.setDataEntity("FCIIssuerDiscretionaryData",
+                            "0x61", len, data);
+                    ReadApplicationTemplate app = new ReadApplicationTemplate();
+                    result = parse(app, data, offset, len);
+
+                    if (result) {
+                        result = app.read();
                     }
+                }
                     break;
             }
-            
+
             return result;
-        }   
+        }
     }
-    
-    class ReadFCIPropTemplate implements EnumCallback
-    {
+
+    class ReadFCIPropTemplate implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("FCIpt %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("FCIpt %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
                 case 0xBF0C:
-                    result=parse(new ReadFCIIssuerDiscretionaryData(),data,offset,len);
+                    mEmvCardEntity.setDataEntity("FCIPropTemplate", "0xBF0C",
+                            len, data);
+                    result = parse(new ReadFCIIssuerDiscretionaryData(), data,
+                            offset, len);
                     break;
                 case 0x88:
-                    if (len==1)
-                    {
-                        result=readPSERecord(data[offset]);
+                    if (len == 1) {
+                        mEmvCardEntity.setDataEntity("FCIPropTemplate", "0x88",
+                                len, data);
+                        result = readPSERecord(data[offset]);
                     }
                     break;
             }
-            
+
             return result;
-        }   
+        }
     }
-    
-    class ReadPPSErecord implements EnumCallback
-    {
+
+    class ReadPPSErecord implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("PPSE %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("PPSE %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
                 case 0xA5:
-                    result=parse(new ReadFCIPropTemplate(),data,offset,len);
+                    mEmvCardEntity.setDataEntity("PPSErecord", "0xA5", len,
+                            data);
+                    result = parse(new ReadFCIPropTemplate(), data, offset, len);
                     break;
                 case 0x84:
-                    if (false)
-                    {
-                        byte [] aid2=BinaryTools.bytesFrom(data,offset, len);
-                        
-                        if (!matchBytes(aid2,aid))
-                        {
-                            aid=aid2;
-                            
-                            result=new ReadApplicationTemplate().read();                     
+                    if (false) {
+                        byte[] aid2 = BinaryTools.bytesFrom(data, offset, len);
+
+                        if (!matchBytes(aid2, aid)) {
+                            aid = aid2;
+
+                            result = new ReadApplicationTemplate().read();
                         }
                     }
                     break;
             }
-            
+
             return result;
-        } 
+        }
     }
-    
-    class ReadPPSE implements EnumCallback
-    {
+
+    class ReadPPSE implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("PPSE %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("PPSE %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
                 case 0x6f:
-                    result=parse(new ReadPPSErecord(),data,offset,len);
+                    mEmvCardEntity.setDataEntity("PPSE", "0x6F", len, data);
+                    result = parse(new ReadPPSErecord(), data, offset, len);
                     break;
             }
-            
-            return result;
-        } 
-    }
-    
-    boolean parse(EnumCallback c,byte [] data,int offset,int len) throws IOException
-    {
-        boolean b=true;
 
-        if (doTrace)
-        {
-            System.err.println("parse "+c.getClass().getSimpleName());
+            return result;
+        }
+    }
+
+    boolean parse(EnumCallback c, byte[] data, int offset, int len)
+            throws IOException {
+        boolean b = true;
+
+        if (doTrace) {
+            System.err.println("parse " + c.getClass().getSimpleName());
             System.err.println(Hex.encode(data, offset, len));
         }
-        
-        while (b && (len > 0))
-        {
-            int tagLen=getTagLen(data,offset,len);
-            
-            if (tagLen < 1) break;
-            
-            int tag=getTag(data,offset,tagLen);
-            
-            offset+=tagLen;
-            len-=tagLen;
-            
-            int lenLen=getLenLen(data,offset,len);
-            
-            int dlen=getLen(data,offset,lenLen);
-            
-            offset+=lenLen; len-=lenLen;
-            
-            if (doTrace)
-            {
-                System.err.println("parse: "+String.format("%04X,%d:", tag,dlen)+Hex.encode(data,offset,dlen));
+
+        while (b && (len > 0)) {
+            int tagLen = getTagLen(data, offset, len);
+
+            if (tagLen < 1)
+                break;
+
+            int tag = getTag(data, offset, tagLen);
+
+            offset += tagLen;
+            len -= tagLen;
+
+            int lenLen = getLenLen(data, offset, len);
+
+            int dlen = getLen(data, offset, lenLen);
+
+            offset += lenLen;
+            len -= lenLen;
+
+            if (doTrace) {
+                System.err.println("parse: "
+                        + String.format("%04X,%d:", tag, dlen)
+                        + Hex.encode(data, offset, dlen));
             }
-            
-            b=c.found(tag, dlen, data, offset);
-            
-            len-=dlen;
-            offset+=dlen;
+
+            b = c.found(tag, dlen, data, offset);
+
+            len -= dlen;
+            offset += dlen;
         }
-        
+
         return b;
     }
-    
-    public void read() throws IOException
-    {
-        byte [] ppse=adf;
-        
-        if (ppse==null)
-        {
-            ppse=reader.transceive(SELECT_PPSE);
+
+    public void read() throws IOException {
+        byte[] ppse = adf;
+
+        if (ppse == null) {
+            ppse = reader.transceive(SELECT_PPSE);
         }
-        
-        if ((ppse!=null)&&(ppse.length>2))
-        {
-            parse(new ReadPPSE(),ppse,0,ppse.length-2);
+
+        if ((ppse != null) && (ppse.length > 2)) {
+            parse(new ReadPPSE(), ppse, 0, ppse.length - 2);
+        } else {
+            throw new IOException("Error in transceive SELECT_PPSE:" + "ppse:"
+                    + ppse + "adf: " + adf);
         }
     }
 
-    int getPDOLlength(byte[] PDOL, int offset, int len) 
-    {
-        int tot=0;
-        
-        while (len > 0)
-        {
-            int tagLen=getTagLen(PDOL,offset,len);
-            int tag=getTag(PDOL,offset,tagLen);
-            offset+=tagLen;
-            len-=tagLen;
-            int optLen=getLenLen(PDOL,offset,len);
-            int actLen=getLen(PDOL,offset,optLen);
-            
-            offset+=optLen;
-            len-=optLen;
-            
-//            System.out.println(String.format("PDOL %04X,%d",tag,actLen));
-            
-            tot+=actLen;
+    int getPDOLlength(byte[] PDOL, int offset, int len) {
+        int tot = 0;
+
+        while (len > 0) {
+            int tagLen = getTagLen(PDOL, offset, len);
+            int tag = getTag(PDOL, offset, tagLen);
+            offset += tagLen;
+            len -= tagLen;
+            int optLen = getLenLen(PDOL, offset, len);
+            int actLen = getLen(PDOL, offset, optLen);
+
+            offset += optLen;
+            len -= optLen;
+
+            // System.out.println(String.format("PDOL %04X,%d",tag,actLen));
+
+            tot += actLen;
         }
-        
+
         return tot;
     }
-    
-    void fillPDOL(byte[] PDOL, int offset, int len, byte[] pdolData, int i) 
-    {
-        while (len > 0)
-        {
-            int tagLen=getTagLen(PDOL,offset,len);
-            int tag=getTag(PDOL,offset,tagLen);
-            offset+=tagLen;
-            len-=tagLen;
-            int optLen=getLenLen(PDOL,offset,len);
-            int actLen=getLen(PDOL,offset,optLen);
-            
-            offset+=optLen;
-            len-=optLen;
-            
-//            System.out.println(String.format("PDOL %04X,%d",tag,actLen));
-            
-            switch (tag)
-            {
-                case 0x9F1A:    /* country code */
-                    if (actLen==2)
-                    {
-                        pdolData[i]=0x05;
-                        pdolData[i+1]=0x54;
+
+    void fillPDOL(byte[] PDOL, int offset, int len, byte[] pdolData, int i) {
+        while (len > 0) {
+            int tagLen = getTagLen(PDOL, offset, len);
+            int tag = getTag(PDOL, offset, tagLen);
+            offset += tagLen;
+            len -= tagLen;
+            int optLen = getLenLen(PDOL, offset, len);
+            int actLen = getLen(PDOL, offset, optLen);
+
+            offset += optLen;
+            len -= optLen;
+
+            // System.out.println(String.format("PDOL %04X,%d",tag,actLen));
+
+            switch (tag) {
+                case 0x9F1A: /* country code */
+                    if (actLen == 2) {
+                        pdolData[i] = 0x05;
+                        pdolData[i + 1] = 0x54;
                     }
                     break;
-                case 0x5F2A:    /* currency */
-                    if (actLen==2)
-                    {
-                        pdolData[i]=0x05;
-                        pdolData[i+1]=0x54;
+                case 0x5F2A: /* currency */
+                    if (actLen == 2) {
+                        pdolData[i] = 0x05;
+                        pdolData[i + 1] = 0x54;
                     }
                     break;
                 case 0x9F66:
-                    switch (actLen)
-                    {
+                    switch (actLen) {
                         case 4: /* kernel 3 */
-                            pdolData[i]=0x30;
-                            pdolData[i+1]=0x00;
-                            pdolData[i+2]=0x00;
-                            pdolData[i+3]=0x00;
+                            pdolData[i] = 0x30;
+                            pdolData[i + 1] = 0x00;
+                            pdolData[i + 2] = 0x00;
+                            pdolData[i + 3] = 0x00;
                             break;
                     }
                     break;
                 case 0x9F37: /* random number */
-                    if (actLen > 0)
-                    {
-                         Random r=new Random();
-                         byte []m=new byte[actLen];
-                         r.nextBytes(m);
-                         System.arraycopy(m,0,pdolData,i,actLen);
+                    if (actLen > 0) {
+                        Random r = new Random();
+                        byte[] m = new byte[actLen];
+                        r.nextBytes(m);
+                        System.arraycopy(m, 0, pdolData, i, actLen);
                     }
                     break;
             }
-            
-            i+=actLen;
+
+            i += actLen;
         }
     }
-    
-    boolean readTrack2Equivalent(byte [] data,int offset,int len)
-    {
-        boolean result=true;
-        String cards=Hex.encode(data, offset, len);
-        int i=cards.indexOf('D');
-        if (i > 0)
-        {
-            pan=cards.substring(0, i);
-            expiryYear=Integer.parseInt(cards.substring(i+1,i+3));
-            expiryMonth=Integer.parseInt(cards.substring(i+3,i+5));
-            result=false;
+
+    boolean readTrack2Equivalent(byte[] data, int offset, int len) {
+        boolean result = true;
+        String cards = Hex.encode(data, offset, len);
+        int i = cards.indexOf('D');
+        if (i > 0) {
+            pan = cards.substring(0, i);
+            expiryYear = Integer.parseInt(cards.substring(i + 1, i + 3));
+            expiryMonth = Integer.parseInt(cards.substring(i + 3, i + 5));
+            mEmvCardEntity.pan = pan;
+            mEmvCardEntity.expiryYear = expiryYear;
+            mEmvCardEntity.expiryMonth = expiryMonth;
+            result = false;
         }
         return result;
     }
 
-    boolean readAFL(byte [] data,int offset,int len) throws IOException
-    {
-        boolean result=true;
-        
-        while (result && (len > 0))
-        {
-            byte sfi=data[offset++];
-            byte firstRec=data[offset++];
-            byte lastRec=data[offset++];
-            byte authNum=data[offset++];
-            
-            while (result && (firstRec <= lastRec))
-            {
-                result=readRecord((byte)(0x1f & (sfi>>3)),firstRec);
-                
+    boolean readAFL(byte[] data, int offset, int len) throws IOException {
+        boolean result = true;
+
+        while (result && (len > 0)) {
+            byte sfi = data[offset++];
+            byte firstRec = data[offset++];
+            byte lastRec = data[offset++];
+            byte authNum = data[offset++];
+
+            while (result && (firstRec <= lastRec)) {
+                result = readRecord((byte) (0x1f & (sfi >> 3)), firstRec);
+
                 firstRec++;
             }
-            
-            len-=4;
+
+            len -= 4;
         }
-        
+
         return result;
     }
-    
-    class ReadRecordData implements EnumCallback
-    {
+
+    class ReadRecordData implements EnumCallback {
         @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-                        
-            switch (tag)
-            {
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            switch (tag) {
                 case 0x57:
                 case 0x9f6b:
-                    result=readTrack2Equivalent(data,offset,len);
+                    mEmvCardEntity.setDataEntity("RecordData - Track2",
+                            "0x57/0x9F6B: " + tag, len, data);
+                    result = readTrack2Equivalent(data, offset, len);
                     break;
                 case 0x5A:
-                    pan=Hex.encode(data, offset, len);
-                    result=(expiryMonth==null);
+                    mEmvCardEntity.setDataEntity("RecordData - Pan", "0x5A",
+                            len, data);
+                    pan = Hex.encode(data, offset, len);
+                    result = (expiryMonth == null);
                     break;
                 case 0x5F24:
-                    expiryMonth=Integer.parseInt(String.format("%x",data[offset+1]));
-                    expiryYear=Integer.parseInt(String.format("%x",data[offset]));
-                    result=(pan==null);
+                    mEmvCardEntity.setDataEntity("RecordData - expiry",
+                            "0x5F24", len, data);
+                    expiryMonth = Integer.parseInt(String.format("%x",
+                            data[offset + 1]));
+                    expiryYear = Integer.parseInt(String.format("%x",
+                            data[offset]));
+                    result = (pan == null);
                     break;
             }
-                       
-            return result;
-        }  
-    }
-    
-    class ReadRecord implements EnumCallback
-    {
-        @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-//            System.out.println(String.format("RR %04X,%d,",tag,len)+Hex.encode(data, offset, len));
-            
-            switch (tag)
-            {
-                case 0x70:
-                    result=parse(new ReadRecordData(),data,offset,len);
-                    break;
-            }
-                       
-            return result;
-        }  
-    }
-    
-    class ReadPSERecord implements EnumCallback
-    {
-        @Override
-        public boolean found(int tag, int len, byte[] data, int offset) throws IOException 
-        {
-            boolean result=true;
-            
-            switch (tag)
-            {
-                case 0x70:
-                    result=parse(new ReadFCIIssuerDiscretionaryData(),data,offset,len);
-                    break;
-            }
-            
+
             return result;
         }
     }
 
-    boolean readPSERecord(byte sfi) throws IOException 
-    {
-        byte num=1;
-        boolean result=true;
-        byte []apdu={0x00,(byte)0xB2,num,(byte)((sfi<<3)+4),0x00 };
-        byte []data=reader.transceive(apdu);
-       
-        if ((data!=null)&&(data.length==2)&&(data[0]==0x6c))
-        {
-            byte []apduLen={0x00,(byte)0xB2,num,(byte)((sfi<<3)+4),data[1]};
-            data=reader.transceive(apduLen);
+    class ReadRecord implements EnumCallback {
+        @Override
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            // System.out.println(String.format("RR %04X,%d,",tag,len)+Hex.encode(data,
+            // offset, len));
+
+            switch (tag) {
+                case 0x70:
+                    mEmvCardEntity.setDataEntity("Record", "0x70", len, data);
+                    result = parse(new ReadRecordData(), data, offset, len);
+                    break;
+            }
+
+            return result;
         }
-        
-        if ((data!=null)&&(data.length>2))
-        {
-            result=parse(new ReadPSERecord(),data,0,data.length-2);
-        }
-        
-        return result;
     }
-    
-    boolean readRecord(byte sfi, byte num) throws IOException 
-    {
-        boolean result=true;
-        byte []apdu={0x00,(byte)0xB2,num,(byte)((sfi<<3)+4),0x00 };
-        byte []data=reader.transceive(apdu);
-       
-        if ((data!=null)&&(data.length==2)&&(data[0]==0x6c))
-        {
-            byte []apduLen={0x00,(byte)0xB2,num,(byte)((sfi<<3)+4),data[1]};
-            data=reader.transceive(apduLen);
+
+    class ReadPSERecord implements EnumCallback {
+        @Override
+        public boolean found(int tag, int len, byte[] data, int offset)
+                throws IOException {
+            boolean result = true;
+
+            switch (tag) {
+                case 0x70:
+                    mEmvCardEntity
+                            .setDataEntity("PSERecord", "0x70", len, data);
+                    result = parse(new ReadFCIIssuerDiscretionaryData(), data,
+                            offset, len);
+                    break;
+            }
+
+            return result;
         }
-        
-        if ((data!=null)&&(data.length>2))
-        {
-            result=parse(new ReadRecord(),data,0,data.length-2);
+    }
+
+    boolean readPSERecord(byte sfi) throws IOException {
+        byte num = 1;
+        boolean result = true;
+        byte[] apdu = { 0x00, (byte) 0xB2, num, (byte) ((sfi << 3) + 4), 0x00 };
+        byte[] data = reader.transceive(apdu);
+
+        if ((data != null) && (data.length == 2) && (data[0] == 0x6c)) {
+            byte[] apduLen = { 0x00, (byte) 0xB2, num, (byte) ((sfi << 3) + 4),
+                    data[1] };
+            data = reader.transceive(apduLen);
+        } 
+
+        if ((data != null) && (data.length > 2)) {
+            result = parse(new ReadPSERecord(), data, 0, data.length - 2);
+        } else {
+            throw new IOException("Error in readPSERecord/ transceive apdu"
+                    + "apdu:" + apdu + "data: " + data + "data.length"
+                    + data.length);
         }
-        
+
         return result;
     }
 
-    static boolean matchBytes(byte[] aid2, byte[] aid) 
-    {
-        boolean match=(aid==null)&&(aid2==null);
-        
-        if (!match)
-        {
-            if ((aid!=null)&&(aid2!=null))
-            {
-                if (aid.length==aid2.length)
-                {
-                    int i=aid.length;
-                    
-                    while (0!=i--)
-                    {
-                        if (aid[i]!=aid2[i])
-                        {
+    boolean readRecord(byte sfi, byte num) throws IOException {
+        boolean result = true;
+        byte[] apdu = { 0x00, (byte) 0xB2, num, (byte) ((sfi << 3) + 4), 0x00 };
+        byte[] data = reader.transceive(apdu);
+
+        if ((data != null) && (data.length == 2) && (data[0] == 0x6c)) {
+            byte[] apduLen = { 0x00, (byte) 0xB2, num, (byte) ((sfi << 3) + 4),
+                    data[1] };
+            data = reader.transceive(apduLen);
+        }
+
+        if ((data != null) && (data.length > 2)) {
+            result = parse(new ReadRecord(), data, 0, data.length - 2);
+        }else {
+            throw new IOException("Error in readRecord/ transceive apdu"
+                    + "apdu:" + apdu + "data: " + data + "data.length"
+                    + data.length);
+        }
+
+        return result;
+    }
+
+    static boolean matchBytes(byte[] aid2, byte[] aid) {
+        boolean match = (aid == null) && (aid2 == null);
+
+        if (!match) {
+            if ((aid != null) && (aid2 != null)) {
+                if (aid.length == aid2.length) {
+                    int i = aid.length;
+
+                    while (0 != i--) {
+                        if (aid[i] != aid2[i]) {
                             break;
                         }
                     }
-                    
-                    match=(i < 0);
+
+                    match = (i < 0);
                 }
             }
         }
-        
+
         return match;
     }
 }

@@ -1,4 +1,4 @@
-package com.example.nfctagrw;
+package com.example.nfctagrw.util;
 
 import java.io.IOException;
 

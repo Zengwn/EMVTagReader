@@ -1,6 +1,13 @@
-package com.example.nfctagrw;
+package com.example.nfctagrw.ui;
 
 import java.io.IOException;
+
+import com.example.nfctagrw.MyApplication;
+import com.example.nfctagrw.R;
+import com.example.nfctagrw.data.EMVCardEntity;
+import com.example.nfctagrw.util.IsoDepCardReader;
+import com.example.nfctagrw.util.NfcaCardReader;
+import com.example.nfctagrw.util.HexTool;
 
 import nz.geek.rhubarb.emvtools.EMVReader;
 import android.app.Activity;
@@ -28,6 +35,7 @@ public class MainActivity extends Activity {
     private IntentFilter[] mFilters;
     private String[][] mTechLists;
     private EMVReader mEmvreader;
+    private boolean mEMVReadSucceed = true;
     private NfcaCardReader mNfcaCardReader;
     private IsoDepCardReader mIsoDepCardReader;
     private NfcA mNfca = null;
@@ -37,7 +45,9 @@ public class MainActivity extends Activity {
     private static final int CONNECT_OVER = 1;
     private static final int TRANS_OVER = 2;
     private static final int DIALOG_CANCEL = 3;
-    private static final String ALIAS_MAINACTIVITY = ".MainActivityTagDetectionAlias";
+    private static final int START_TAGVIEWER = 4;
+    private static final String ALIAS_MAINACTIVITY = ".ui.MainActivityTagDetectionAlias";
+    public static final String INTENT_MAINACTIVITY = "com.example.nfctagrw.ui.MainActivity";
 
     private Handler mHandler = new Handler() {
         @Override
@@ -72,39 +82,11 @@ public class MainActivity extends Activity {
                 case TRANS_OVER:
                     Log.i(TAG, "trans done");
                     if (isIsoDep) {
-                        Log.i(TAG,
-                                "getMaxTransceiveLength :"
-                                        + mIsoDep.getMaxTransceiveLength());
-                        Log.i(TAG,
-                                "getHiLayerResponse :"
-                                        + mIsoDep.getHiLayerResponse());
-                        Log.i(TAG,
-                                "getHistoricalBytes :"
-                                        + mIsoDep.getHistoricalBytes());
-                        Log.i(TAG, "isConnected :" + mIsoDep.isConnected());
-                        Log.i(TAG,
-                                "isExtendedLengthApduSupported :"
-                                        + mIsoDep
-                                                .isExtendedLengthApduSupported());
-                        Log.i(TAG, "getTag :" + mIsoDep.getTag());
-                    } else {
-                        Log.i(TAG,
-                                "getMaxTransceiveLength :"
-                                        + mNfca.getMaxTransceiveLength());
-                        Log.i(TAG, "getAtqa :" + mNfca.getAtqa());
-                        Log.i(TAG, "getSak :" + mNfca.getSak());
-                        Log.i(TAG, "isConnected :" + mNfca.isConnected());
-                        Log.i(TAG, "getTimeout :" + mNfca.getTimeout());
-                        Log.i(TAG, "getTag :" + mNfca.getTag());
-                    }
-                    // Log.i(TAG, mAdfInfo.toString());
-
-                    if (isIsoDep) {
                         try {
                             byte[] mAdfInfo = mIsoDep
                                     .transceive(mEmvreader.SELECT_PPSE);
                             Log.i(TAG, "mAdfInfo =  "
-                                    + bytesToHexString(mAdfInfo));
+                                    + HexTool.bytesToHexString(mAdfInfo));
                         } catch (IOException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
@@ -130,18 +112,33 @@ public class MainActivity extends Activity {
                                         + mEmvreader.expiryYear + ",M="
                                         + mEmvreader.expiryMonth);
 
-                                mHandler.sendEmptyMessage(DIALOG_CANCEL);
+                                ((MyApplication) getApplication())
+                                        .setEMVCardEntity(mEmvreader
+                                                .getEMVCardEntity());
+
+                                mHandler.sendEmptyMessage(START_TAGVIEWER);
                             } catch (IOException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
+                                mEMVReadSucceed = false;
+                                EMVCardEntity entity = mEmvreader
+                                        .getEMVCardEntity();
+                                entity.excepMsg = e.getMessage();
+                                ((MyApplication) getApplication())
+                                        .setEMVCardEntity(entity);
+                                mHandler.sendEmptyMessage(START_TAGVIEWER);
                             }
                         }
 
                     }).start();
                     break;
-                case DIALOG_CANCEL:
-                    Log.i(TAG, "Cancel progress dialog");
+                case START_TAGVIEWER:
                     stopProgressDialog();
+                    startViewer();
+                    break;
+                case DIALOG_CANCEL:
+                    stopProgressDialog();
+                    break;
                 default:
                     break;
             }
@@ -236,19 +233,7 @@ public class MainActivity extends Activity {
         processIntentRaw(intent);
     }
 
-    private String bytesToHexString(byte[] src) {
-        StringBuilder stringBuilder = new StringBuilder("0x");
-        if (src == null || src.length <= 0) {
-            return null;
-        }
-        char[] buffer = new char[2];
-        for (int i = 0; i < src.length; i++) {
-            buffer[0] = Character.forDigit((src[i] >>> 4) & 0x0F, 16);
-            buffer[1] = Character.forDigit(src[i] & 0x0F, 16);
-            stringBuilder.append(buffer);
-        }
-        return stringBuilder.toString();
-    }
+
 
     private void processIntentRaw(Intent intent) {
         Log.i(TAG, "processIntentRaw");
@@ -256,7 +241,7 @@ public class MainActivity extends Activity {
         Log.i(TAG, tagFromIntent.toString());
 
         startProgressDialog();
-
+        mEMVReadSucceed = true;
         for (String tech : tagFromIntent.getTechList()) {
             // mTagInfo.append(tech + "\n");
         }
@@ -290,7 +275,14 @@ public class MainActivity extends Activity {
     }
 
     public void closeApp(View view) {
-        finish();
+        // finish();
+    }
+
+    private void startViewer() {
+        Log.i(TAG, "startViewer with boolean :" + mEMVReadSucceed);
+        Intent intent = new Intent(this, TagInfoViewer.class).putExtra(
+                INTENT_MAINACTIVITY, mEMVReadSucceed);
+        startActivity(intent);
     }
 
     private void startProgressDialog() {

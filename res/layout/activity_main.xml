@@ -32,11 +32,12 @@
             android:background="@drawable/nfc_black" />
 
         <TextView
+            android:id="@+id/textInfo"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center_vertical"
             android:paddingLeft="@dimen/dp10"
-            android:text="Scan a tag..."
+            android:text="@string/scan_a_tag"
             android:textColor="@color/white"
             android:textSize="@dimen/big_text" />
     </LinearLayout>
@@ -45,7 +46,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="bottom"
-        android:paddingBottom="@dimen/dp10" >
+        android:orientation="vertical" >
 
         <Button
             android:layout_width="match_parent"
@@ -56,6 +57,7 @@
             android:onClick="closeApp"
             android:text="Close"
             android:textSize="@dimen/big_text" />
+
     </LinearLayout>
 
 </LinearLayout>
