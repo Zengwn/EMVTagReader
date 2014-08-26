@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
     private String[][] mTechLists;
     private EMVReader mEmvreader;
     private boolean mEMVReadSucceed = true;
+    private boolean mEMVReadDebug = false;
     private NfcaCardReader mNfcaCardReader;
     private IsoDepCardReader mIsoDepCardReader;
     private NfcA mNfca = null;
@@ -45,7 +46,7 @@ public class MainActivity extends Activity {
     private boolean isIsoDep = true;
     private byte[] mAdfInfo;
     private static final int CONNECT_OVER = 1;
-    private static final int TRANS_OVER = 2;
+    private static final int ADF_SELECT_OVER = 2;
     private static final int DIALOG_CANCEL = 3;
     private static final int START_TAGVIEWER = 4;
     private static final String ALIAS_MAINACTIVITY = ".ui.MainActivityTagDetectionAlias";
@@ -57,65 +58,47 @@ public class MainActivity extends Activity {
             switch (msg.what) {
                 case CONNECT_OVER:
                     Log.i(TAG, "Connected");
-                    Log.i(TAG, "");
-                    new Thread(new Runnable() {
 
+                    new Thread(new Runnable() {
                         @Override
                         public void run() {
                             // TODO Auto-generated method stub
-                            try {
-                                if (isIsoDep) {
+                            if (isIsoDep) {
+                                try {
                                     byte[] mAdfInfo = mIsoDep
                                             .transceive(mEmvreader.SELECT_PPSE);
-                                } else {
-                                    byte[] mAdfInfo = mNfca
-                                            .transceive(mEmvreader.SELECT_PPSE);
-                                }
-                            } catch (IOException e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
-                            }
 
-                            mHandler.sendEmptyMessage(TRANS_OVER);
+                                    Log.i(TAG,
+                                            "mAdfInfo =  "
+                                                    + HexTool
+                                                            .bytesToHexString(mAdfInfo));
+                                } catch (IOException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+                            }
+                            mHandler.sendEmptyMessage(ADF_SELECT_OVER);
                         }
                     }).start();
 
                     break;
-                case TRANS_OVER:
-                    Log.i(TAG, "trans done");
+                case ADF_SELECT_OVER:
+                    Log.i(TAG, "ADF selected");
                     if (isIsoDep) {
-                        try {
-                            byte[] mAdfInfo = mIsoDep
-                                    .transceive(mEmvreader.SELECT_PPSE);
-                            Log.i(TAG,
-                                    "mAdfInfo =  "
-                                            + HexTool
-                                                    .bytesToHexString(mAdfInfo));
-                        } catch (IOException e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
-                        }
                         mEmvreader = new EMVReader(mIsoDepCardReader, null,
                                 mAdfInfo);
                     } else {
                         mEmvreader = new EMVReader(mNfcaCardReader, null,
                                 mAdfInfo);
                     }
-                    mEmvreader.doTrace = true;
+                    mEmvreader.doTrace = mEMVReadDebug;
 
                     new Thread(new Runnable() {
-
                         @Override
                         public void run() {
                             // TODO Auto-generated method stub
                             try {
                                 mEmvreader.read();
-
-                                Log.i(TAG, "Issuer " + mEmvreader.issuer);
-                                Log.i(TAG, "Result " + mEmvreader.pan + ",Y="
-                                        + mEmvreader.expiryYear + ",M="
-                                        + mEmvreader.expiryMonth);
-
                                 ((MyApplication) getApplication())
                                         .setEMVCardEntity(mEmvreader
                                                 .getEMVCardEntity());
@@ -153,11 +136,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         Log.i(TAG, "onCreate");
         setContentView(R.layout.activity_main);
 
-        mVibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);   
+        mVibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this,
                 getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .setComponent(getComponentName()), 0);
@@ -175,13 +158,14 @@ public class MainActivity extends Activity {
 
         if (mNfcAdapter == null) {
             Toast.makeText(this, "This device doesn't support NFC.",
-                    Toast.LENGTH_LONG).show();
+                    Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
         if (!mNfcAdapter.isEnabled()) {
-            // mTagInfo.append("NFC is not enabled");
+            Toast.makeText(this, "NFC is not enabled", Toast.LENGTH_SHORT).show();
+            finish();
             return;
         }
 
@@ -256,10 +240,12 @@ public class MainActivity extends Activity {
                         mIsoDep.connect();
                     } else
                         mNfca.connect();
-                    mHandler.sendEmptyMessage(CONNECT_OVER);
+                    // mHandler.sendEmptyMessage(CONNECT_OVER);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+
+                mHandler.sendEmptyMessage(CONNECT_OVER);
             }
 
         }).start();
@@ -271,7 +257,7 @@ public class MainActivity extends Activity {
 
     private void startViewer() {
         Log.i(TAG, "startViewer with boolean :" + mEMVReadSucceed);
-        mVibrator.vibrate(100); 
+        mVibrator.vibrate(100);
         Intent intent = new Intent(this, TagInfoViewer.class).putExtra(
                 INTENT_MAINACTIVITY, mEMVReadSucceed);
         startActivity(intent);
