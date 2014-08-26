@@ -5,8 +5,8 @@ import java.io.IOException;
 import com.example.nfctagrw.MyApplication;
 import com.example.nfctagrw.R;
 import com.example.nfctagrw.data.EMVCardEntity;
-import com.example.nfctagrw.util.IsoDepCardReader;
-import com.example.nfctagrw.util.NfcaCardReader;
+import com.example.nfctagrw.util.Card;
+import com.example.nfctagrw.util.CardFactory;
 import com.example.nfctagrw.util.HexTool;
 
 import nz.geek.rhubarb.emvtools.EMVReader;
@@ -16,7 +16,6 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.nfc.NfcAdapter;
-import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
 import android.nfc.tech.NfcA;
 import android.os.Bundle;
@@ -39,11 +38,7 @@ public class MainActivity extends Activity {
     private EMVReader mEmvreader;
     private boolean mEMVReadSucceed = true;
     private boolean mEMVReadDebug = false;
-    private NfcaCardReader mNfcaCardReader;
-    private IsoDepCardReader mIsoDepCardReader;
-    private NfcA mNfca = null;
-    private IsoDep mIsoDep = null;
-    private boolean isIsoDep = true;
+    private Card mCard;
     private byte[] mAdfInfo;
     private static final int CONNECT_OVER = 1;
     private static final int ADF_SELECT_OVER = 2;
@@ -63,19 +58,17 @@ public class MainActivity extends Activity {
                         @Override
                         public void run() {
                             // TODO Auto-generated method stub
-                            if (isIsoDep) {
-                                try {
-                                    byte[] mAdfInfo = mIsoDep
-                                            .transceive(mEmvreader.SELECT_PPSE);
+                            try {
+                                byte[] mAdfInfo = mCard.getCardReader()
+                                        .transceive(mEmvreader.SELECT_PPSE);
 
-                                    Log.i(TAG,
-                                            "mAdfInfo =  "
-                                                    + HexTool
-                                                            .bytesToHexString(mAdfInfo));
-                                } catch (IOException e) {
-                                    // TODO Auto-generated catch block
-                                    e.printStackTrace();
-                                }
+                                Log.i(TAG,
+                                        "mAdfInfo =  "
+                                                + HexTool
+                                                        .bytesToHexString(mAdfInfo));
+                            } catch (IOException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
                             }
                             mHandler.sendEmptyMessage(ADF_SELECT_OVER);
                         }
@@ -84,13 +77,8 @@ public class MainActivity extends Activity {
                     break;
                 case ADF_SELECT_OVER:
                     Log.i(TAG, "ADF selected");
-                    if (isIsoDep) {
-                        mEmvreader = new EMVReader(mIsoDepCardReader, null,
-                                mAdfInfo);
-                    } else {
-                        mEmvreader = new EMVReader(mNfcaCardReader, null,
-                                mAdfInfo);
-                    }
+                    mEmvreader = new EMVReader(mCard.getCardReader(), null,
+                            mAdfInfo);
                     mEmvreader.doTrace = mEMVReadDebug;
 
                     new Thread(new Runnable() {
@@ -164,7 +152,8 @@ public class MainActivity extends Activity {
         }
 
         if (!mNfcAdapter.isEnabled()) {
-            Toast.makeText(this, "NFC is not enabled", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "NFC is not enabled", Toast.LENGTH_SHORT)
+                    .show();
             finish();
             return;
         }
@@ -191,13 +180,10 @@ public class MainActivity extends Activity {
         super.onPause();
         Log.i(TAG, "onPause");
         mNfcAdapter.disableForegroundDispatch(this);
+
         try {
-            if (isIsoDep) {
-                if (mIsoDep != null)
-                    mIsoDep.close();
-            } else {
-                if (mNfca != null)
-                    mNfca.close();
+            if (mCard != null) {
+                mCard.close();
             }
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -212,23 +198,10 @@ public class MainActivity extends Activity {
 
     private void processIntentRaw(Intent intent) {
         Log.i(TAG, "processIntentRaw");
-        Tag tagFromIntent = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-        Log.i(TAG, tagFromIntent.toString());
 
+        mCard = CardFactory.getCurrentCard(intent);
         startProgressDialog();
         mEMVReadSucceed = true;
-        for (String tech : tagFromIntent.getTechList()) {
-            // mTagInfo.append(tech + "\n");
-        }
-
-        if (isIsoDep) {
-            mIsoDep = IsoDep.get(tagFromIntent);
-            mIsoDepCardReader = new IsoDepCardReader(mIsoDep);
-
-        } else {
-            mNfca = NfcA.get(tagFromIntent);
-            mNfcaCardReader = new NfcaCardReader(mNfca);
-        }
 
         new Thread(new Runnable() {
 
@@ -236,18 +209,12 @@ public class MainActivity extends Activity {
             public void run() {
                 // TODO Auto-generated method stub
                 try {
-                    if (isIsoDep) {
-                        mIsoDep.connect();
-                    } else
-                        mNfca.connect();
-                    // mHandler.sendEmptyMessage(CONNECT_OVER);
+                    mCard.connect();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-
                 mHandler.sendEmptyMessage(CONNECT_OVER);
             }
-
         }).start();
     }
 
