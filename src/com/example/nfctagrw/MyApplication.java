@@ -1,22 +1,29 @@
 package com.example.nfctagrw;
 
-import com.example.nfctagrw.data.EMVCardEntity;
-
+import com.example.nfctagrw.base.Card;
 import android.app.Application;
 
 public class MyApplication extends Application {
-    private EMVCardEntity mEMVCardEntity;
+    // private EMVCardEntity mEMVCardEntity;
+    private Card mCurrentCard;
 
     public void onCreate() {
         super.onCreate();
-
     }
 
-    public void setEMVCardEntity(EMVCardEntity entity) {
-        mEMVCardEntity = entity;
+    public void setCurrentCard(Card c) {
+        mCurrentCard = c;
     }
-    
-    public EMVCardEntity getEMVCardEntity(){
-        return mEMVCardEntity;
+
+    public Card getCurrentCard() {
+        return mCurrentCard;
     }
+
+    // public void setEMVCardEntity(EMVCardEntity entity) {
+    // mEMVCardEntity = entity;
+    // }
+    //
+    // public EMVCardEntity getEMVCardEntity(){
+    // return mEMVCardEntity;
+    // }
 }

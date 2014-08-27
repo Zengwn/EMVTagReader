@@ -3,6 +3,9 @@ package com.example.nfctagrw.util;
 public class HexTool {
 
     public static String bytesToHexString(byte[] src) {
+        if (src == null)
+            return null;
+
         StringBuilder stringBuilder = new StringBuilder("0x");
         if (src == null || src.length <= 0) {
             return null;

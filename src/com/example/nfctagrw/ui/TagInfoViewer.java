@@ -1,6 +1,7 @@
 package com.example.nfctagrw.ui;
 
 import com.example.nfctagrw.R;
+import com.example.nfctagrw.base.Card;
 import com.example.nfctagrw.data.DataEntity;
 import com.example.nfctagrw.data.EMVCardEntity;
 import com.example.nfctagrw.util.HexTool;
@@ -16,6 +17,7 @@ import android.nfc.NfcAdapter;
 import android.nfc.tech.IsoDep;
 import android.nfc.tech.NfcA;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -23,6 +25,7 @@ public class TagInfoViewer extends Activity {
     public static final String TAG = TagInfoViewer.class.getSimpleName();
 
     private EMVCardEntity mEMVCardEntity;
+    private Card mCard;
     private ImageView mCardView;
     private TextView mCardInfo;
     private TextView mCardIssur;
@@ -37,10 +40,10 @@ public class TagInfoViewer extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_tag_info_viewer);
-        mEMVCardEntity = ((MyApplication) getApplication()).getEMVCardEntity();
+        mCard = ((MyApplication) getApplication()).getCurrentCard();
+        mEMVCardEntity = (EMVCardEntity) (mCard.getResult().object);
 
-        showStateDialog(getIntent().getBooleanExtra(
-                MainActivity.INTENT_MAINACTIVITY, true));
+        showStateDialog();
 
         initControl();
         
@@ -70,10 +73,13 @@ public class TagInfoViewer extends Activity {
         super.onPause();
         mNfcAdapter.disableForegroundDispatch(this);
     }
-    public void showStateDialog(boolean good) {
+    public void showStateDialog() {
         String msg;
 
-        if (good) {
+        Card.state state = mCard.getActionError();
+        Log.i(TAG, "showstatedialog: " + state);
+        
+        if (state.equals(Card.state.OK)) {
             msg = "New TAG Detected";
         } else {
             msg = "TAG reading interrupted";
@@ -99,16 +105,20 @@ public class TagInfoViewer extends Activity {
     }
 
     private void initContent() {
-        mCardIssur.setText(mEMVCardEntity.issuer);
-        mCardPan.setText(mEMVCardEntity.pan);
-        mCardExpriyDate.setText(mEMVCardEntity.expiryMonth + " / "
-                + mEMVCardEntity.expiryYear);
-        mCardInfo.setText("Process:Tag:Length:Data\n");
+        try {
+            mCardIssur.setText(mEMVCardEntity.issuer);
+            mCardPan.setText(mEMVCardEntity.pan);
+            mCardExpriyDate.setText(mEMVCardEntity.expiryMonth + " / "
+                    + mEMVCardEntity.expiryYear);
+            mCardInfo.setText("Process:Tag:Length:Data\n");
 
-        for (DataEntity e : mEMVCardEntity.getDataEntity()) {
-            mCardInfo.append("[" + e.tagName + "]" + "\n" + "[" + e.subTag
-                    + "]" + "\n" + "[" + e.lengh + "]" + "\n"
-                    + HexTool.bytesToHexString(e.data) + "\n" + "\n");
+            for (DataEntity e : mEMVCardEntity.getDataEntity()) {
+                mCardInfo.append("[" + e.tagName + "]" + "\n" + "[" + e.subTag
+                        + "]" + "\n" + "[" + e.lengh + "]" + "\n"
+                        + HexTool.bytesToHexString(e.data) + "\n" + "\n");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "No card information!");
         }
     }
 }

@@ -1,15 +1,10 @@
 package com.example.nfctagrw.ui;
 
-import java.io.IOException;
-
 import com.example.nfctagrw.MyApplication;
 import com.example.nfctagrw.R;
-import com.example.nfctagrw.data.EMVCardEntity;
-import com.example.nfctagrw.util.Card;
-import com.example.nfctagrw.util.CardFactory;
-import com.example.nfctagrw.util.HexTool;
-
-import nz.geek.rhubarb.emvtools.EMVReader;
+import com.example.nfctagrw.base.Card;
+import com.example.nfctagrw.base.Card.CardAccessListener;
+import com.example.nfctagrw.base.CardFactory;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
@@ -26,7 +21,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements CardAccessListener {
     public static final String TAG = MainActivity.class.getSimpleName();
 
     private NfcAdapter mNfcAdapter;
@@ -35,15 +30,10 @@ public class MainActivity extends Activity {
     private ProgressDialog mProgressDialog;
     private IntentFilter[] mFilters;
     private String[][] mTechLists;
-    private EMVReader mEmvreader;
-    private boolean mEMVReadSucceed = true;
-    private boolean mEMVReadDebug = false;
     private Card mCard;
-    private byte[] mAdfInfo;
-    private static final int CONNECT_OVER = 1;
-    private static final int ADF_SELECT_OVER = 2;
-    private static final int DIALOG_CANCEL = 3;
-    private static final int START_TAGVIEWER = 4;
+
+    private static final int CARD_INIT = 1;
+    private static final int CARD_READY = 2;
     private static final String ALIAS_MAINACTIVITY = ".ui.MainActivityTagDetectionAlias";
     public static final String INTENT_MAINACTIVITY = "com.example.nfctagrw.ui.MainActivity";
 
@@ -51,69 +41,76 @@ public class MainActivity extends Activity {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
-                case CONNECT_OVER:
-                    Log.i(TAG, "Connected");
-
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            // TODO Auto-generated method stub
-                            try {
-                                byte[] mAdfInfo = mCard.getCardReader()
-                                        .transceive(mEmvreader.SELECT_PPSE);
-
-                                Log.i(TAG,
-                                        "mAdfInfo =  "
-                                                + HexTool
-                                                        .bytesToHexString(mAdfInfo));
-                            } catch (IOException e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
-                            }
-                            mHandler.sendEmptyMessage(ADF_SELECT_OVER);
-                        }
-                    }).start();
-
+                case CARD_INIT:
+                    Log.i(TAG, "Card initialize");
+                    mCard.prepare(MainActivity.this);
                     break;
-                case ADF_SELECT_OVER:
-                    Log.i(TAG, "ADF selected");
-                    mEmvreader = new EMVReader(mCard.getCardReader(), null,
-                            mAdfInfo);
-                    mEmvreader.doTrace = mEMVReadDebug;
-
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            // TODO Auto-generated method stub
-                            try {
-                                mEmvreader.read();
-                                ((MyApplication) getApplication())
-                                        .setEMVCardEntity(mEmvreader
-                                                .getEMVCardEntity());
-
-                                mHandler.sendEmptyMessage(START_TAGVIEWER);
-                            } catch (IOException e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
-                                mEMVReadSucceed = false;
-                                EMVCardEntity entity = mEmvreader
-                                        .getEMVCardEntity();
-                                entity.excepMsg = e.getMessage();
-                                ((MyApplication) getApplication())
-                                        .setEMVCardEntity(entity);
-                                mHandler.sendEmptyMessage(START_TAGVIEWER);
-                            }
-                        }
-
-                    }).start();
-                    break;
-                case START_TAGVIEWER:
+                case CARD_READY:
+                    Log.i(TAG, "Card Connected");
                     stopProgressDialog();
                     startViewer();
                     break;
-                case DIALOG_CANCEL:
-                    stopProgressDialog();
-                    break;
+
+//                case DEFAULT_ACTION_DONE:
+//                    stopProgressDialog();
+//                    startViewer();
+//                    break;
+//                    new Thread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            // TODO Auto-generated method stub
+//                            try {
+//                                byte[] mAdfInfo = mCard.getCardReader()
+//                                        .transceive(mEmvreader.SELECT_PPSE);
+//                                Log.i(TAG,
+//                                        "mAdfInfo =  "
+//                                                + HexTool
+//                                                        .bytesToHexString(mAdfInfo));
+//                            } catch (IOException e) {
+//                                // TODO Auto-generated catch block
+//                                e.printStackTrace();
+//                            }
+//                            mHandler.sendEmptyMessage(ADF_SELECT_OVER);
+//                        }
+//                    }).start();
+//
+//                    break;
+//                case ADF_SELECT_OVER:
+//                    Log.i(TAG, "ADF selected");
+//                    mEmvreader = new EMVReader(mCard.getCardReader(), null,
+//                            mAdfInfo);
+//                    mEmvreader.doTrace = mEMVReadDebug;
+//
+//                    new Thread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            // TODO Auto-generated method stub
+//                            try {
+//                                mEmvreader.read();
+//                                ((MyApplication) getApplication())
+//                                        .setEMVCardEntity(mEmvreader
+//                                                .getEMVCardEntity());
+//
+//                                mHandler.sendEmptyMessage(START_TAGVIEWER);
+//                            } catch (IOException e) {
+//                                // TODO Auto-generated catch block
+//                                e.printStackTrace();
+//                                mEMVReadSucceed = false;
+//                                EMVCardEntity entity = mEmvreader
+//                                        .getEMVCardEntity();
+//                                entity.excepMsg = e.getMessage();
+//                                ((MyApplication) getApplication())
+//                                        .setEMVCardEntity(entity);
+//                                mHandler.sendEmptyMessage(START_TAGVIEWER);
+//                            }
+//                        }
+//
+//                    }).start();
+//                    break;
+//                case START_TAGVIEWER:
+//                    stopProgressDialog();
+//                    startViewer();
+//                    break;
                 default:
                     break;
             }
@@ -181,13 +178,8 @@ public class MainActivity extends Activity {
         Log.i(TAG, "onPause");
         mNfcAdapter.disableForegroundDispatch(this);
 
-        try {
-            if (mCard != null) {
-                mCard.close();
-            }
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        if (mCard != null) {
+            mCard.close();
         }
     }
 
@@ -200,22 +192,9 @@ public class MainActivity extends Activity {
         Log.i(TAG, "processIntentRaw");
 
         mCard = CardFactory.getCurrentCard(intent);
+        ((MyApplication) getApplication()).setCurrentCard(mCard);
         startProgressDialog();
-        mEMVReadSucceed = true;
-
-        new Thread(new Runnable() {
-
-            @Override
-            public void run() {
-                // TODO Auto-generated method stub
-                try {
-                    mCard.connect();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                mHandler.sendEmptyMessage(CONNECT_OVER);
-            }
-        }).start();
+        mHandler.sendEmptyMessage(CARD_INIT);
     }
 
     public void closeApp(View view) {
@@ -223,10 +202,9 @@ public class MainActivity extends Activity {
     }
 
     private void startViewer() {
-        Log.i(TAG, "startViewer with boolean :" + mEMVReadSucceed);
+        Log.i(TAG, "start TAGViewer");
         mVibrator.vibrate(100);
-        Intent intent = new Intent(this, TagInfoViewer.class).putExtra(
-                INTENT_MAINACTIVITY, mEMVReadSucceed);
+        Intent intent = new Intent(this, TagInfoViewer.class);
         startActivity(intent);
     }
 
@@ -237,31 +215,27 @@ public class MainActivity extends Activity {
         mProgressDialog.setMessage("Reading Tag...");
         mProgressDialog.setIndeterminate(false);
         mProgressDialog.setCancelable(false);
-
         mProgressDialog.show();
-
-        new Thread() {
-            public void run() {
-                int count = 0;
-                while (count <= 40) {
-                    mProgressDialog.setProgress(count++);
-                    try {
-                        Thread.sleep(100);
-                    } catch (Exception e) {
-                        Log.i(TAG, "ProgressDialog thread monitor error");
-                    }
-                }
-                mHandler.sendEmptyMessage(DIALOG_CANCEL);
-            }
-        }.start();
     }
 
     private void stopProgressDialog() {
-        if (mProgressDialog != null) {
+        try {
             mProgressDialog.cancel();
-        } else {
-            Log.i(TAG, "ProgressDialog is NULL");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    @Override
+    public void cardReady() {
+        // TODO Auto-generated method stub
+        mHandler.sendEmptyMessage(CARD_READY);
+    }
+
+    @Override
+    public void transceiveDone() {
+        // TODO Auto-generated method stub
+
     }
 
 }

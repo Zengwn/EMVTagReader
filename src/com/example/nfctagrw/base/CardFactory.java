@@ -1,4 +1,4 @@
-package com.example.nfctagrw.util;
+package com.example.nfctagrw.base;
 
 import android.content.Intent;
 import android.nfc.NfcAdapter;

@@ -1,4 +1,4 @@
-package com.example.nfctagrw.util;
+package com.example.nfctagrw.base;
 
 import java.io.IOException;
 
@@ -17,45 +17,46 @@ public class NfcaCard implements Card, CardReader {
     }
 
     @Override
-    public byte[] transceive(byte[] apdu) throws IOException {
-        // TODO Auto-generated method stub
-        return mNfca.transceive(apdu);
-    }
-
-    @Override
-    public void connect() throws IOException {
-        // TODO Auto-generated method stub
-        mNfca.connect();
-    }
-
-    @Override
-    public void close() throws IOException {
-        // TODO Auto-generated method stub
-        mNfca.close();
-    }
-
-    @Override
-    public CardReader getCardReader() {
-        // TODO Auto-generated method stub
-        return this;
-    }
-
-    @Override
-    public void AttachActivity(CardAccessListener cb) {
+    public void prepare(CardAccessListener cb) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void prepare() {
+    public void defaultAction() {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void transceive(byte[] apdu, CardAccessListener cb) {
+    public void close() {
         // TODO Auto-generated method stub
         
     }
+
+    @Override
+    public void asyncTransceive(byte[] apdu, CardAccessListener cb) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public byte[] transceive(byte[] apdu) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public result getResult() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public state getActionError() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 
 }
