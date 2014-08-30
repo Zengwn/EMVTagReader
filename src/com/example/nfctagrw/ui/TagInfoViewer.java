@@ -1,7 +1,7 @@
 package com.example.nfctagrw.ui;
 
 import com.example.nfctagrw.R;
-import com.example.nfctagrw.base.Card;
+import com.example.nfctagrw.card.base.Card;
 import com.example.nfctagrw.data.DataEntity;
 import com.example.nfctagrw.data.EMVCardEntity;
 import com.example.nfctagrw.util.HexTool;
@@ -28,6 +28,7 @@ public class TagInfoViewer extends Activity {
     private Card mCard;
     private ImageView mCardView;
     private TextView mCardInfo;
+    private TextView mCardAID;
     private TextView mCardIssur;
     private TextView mCardPan;
     private TextView mCardExpriyDate;
@@ -41,21 +42,20 @@ public class TagInfoViewer extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_tag_info_viewer);
         mCard = ((MyApplication) getApplication()).getCurrentCard();
-        mEMVCardEntity = (EMVCardEntity) (mCard.getResult().object);
 
         showStateDialog();
 
         initControl();
-        
+
         mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this,
                 getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .setComponent(getComponentName()), 0);
-        
+
         IntentFilter nfcTech = new IntentFilter(
                 NfcAdapter.ACTION_TECH_DISCOVERED);
 
         mFilters = new IntentFilter[] { nfcTech, };
-        
+
         mTechLists = new String[][] { new String[] { NfcA.class.getName() },
                 new String[] { IsoDep.class.getName() } };
 
@@ -65,25 +65,18 @@ public class TagInfoViewer extends Activity {
     public void onResume() {
         super.onResume();
         initContent();
-        mNfcAdapter.enableForegroundDispatch(this, mPendingIntent,
-                mFilters, mTechLists);
+        mNfcAdapter.enableForegroundDispatch(this, mPendingIntent, mFilters,
+                mTechLists);
     }
 
-    public void onPause(){
+    public void onPause() {
         super.onPause();
         mNfcAdapter.disableForegroundDispatch(this);
     }
-    public void showStateDialog() {
-        String msg;
 
-        Card.state state = mCard.getActionError();
-        Log.i(TAG, "showstatedialog: " + state);
-        
-        if (state.equals(Card.state.OK)) {
-            msg = "New TAG Detected";
-        } else {
-            msg = "TAG reading interrupted";
-        }
+    public void showStateDialog() {
+        String msg = new StringBuilder().append(mCard.getAidName())
+                .append("  detected").toString();
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(msg).setNegativeButton("No",
@@ -99,24 +92,21 @@ public class TagInfoViewer extends Activity {
     private void initControl() {
         mCardView = (ImageView) findViewById(R.id.image);
         mCardInfo = (TextView) findViewById(R.id.emvInfo);
+        mCardAID = (TextView) findViewById(R.id.aid);
         mCardIssur = (TextView) findViewById(R.id.issuer);
         mCardPan = (TextView) findViewById(R.id.pan);
         mCardExpriyDate = (TextView) findViewById(R.id.expriy);
     }
 
     private void initContent() {
-        try {
-            mCardIssur.setText(mEMVCardEntity.issuer);
-            mCardPan.setText(mEMVCardEntity.pan);
-            mCardExpriyDate.setText(mEMVCardEntity.expiryMonth + " / "
-                    + mEMVCardEntity.expiryYear);
-            mCardInfo.setText("Process:Tag:Length:Data\n");
+        mCardView.setImageBitmap(mCard.getRepresentImg());
 
-            for (DataEntity e : mEMVCardEntity.getDataEntity()) {
-                mCardInfo.append("[" + e.tagName + "]" + "\n" + "[" + e.subTag
-                        + "]" + "\n" + "[" + e.lengh + "]" + "\n"
-                        + HexTool.bytesToHexString(e.data) + "\n" + "\n");
-            }
+        try {
+            mCardAID.setText(mCard.getAid());
+            mCardIssur.setText(mCard.getIssuer());
+            mCardPan.setText(mCard.getPan());
+            mCardExpriyDate.setText(mCard.getExpiryMonth() + " / "
+                    + mCard.getExpiryYear());
         } catch (Exception e) {
             Log.e(TAG, "No card information!");
         }

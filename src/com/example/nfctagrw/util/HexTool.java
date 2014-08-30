@@ -6,7 +6,8 @@ public class HexTool {
         if (src == null)
             return null;
 
-        StringBuilder stringBuilder = new StringBuilder("0x");
+//        StringBuilder stringBuilder = new StringBuilder("0x");
+        StringBuilder stringBuilder = new StringBuilder();
         if (src == null || src.length <= 0) {
             return null;
         }

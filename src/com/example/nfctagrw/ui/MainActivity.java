@@ -2,9 +2,11 @@ package com.example.nfctagrw.ui;
 
 import com.example.nfctagrw.MyApplication;
 import com.example.nfctagrw.R;
-import com.example.nfctagrw.base.Card;
-import com.example.nfctagrw.base.Card.CardAccessListener;
-import com.example.nfctagrw.base.CardFactory;
+import com.example.nfctagrw.card.base.Card;
+import com.example.nfctagrw.card.base.Card.CardAccessListener;
+import com.example.nfctagrw.card.base.Card.state;
+import com.example.nfctagrw.card.base.CardFactory;
+
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
@@ -30,87 +32,42 @@ public class MainActivity extends Activity implements CardAccessListener {
     private ProgressDialog mProgressDialog;
     private IntentFilter[] mFilters;
     private String[][] mTechLists;
-    private Card mCard;
+    private CardFactory mCardFactory;
 
-    private static final int CARD_INIT = 1;
-    private static final int CARD_READY = 2;
+    private static final int CARD_READY = 1;
+    private static final int CARD_INIT_ERROR = 2;
+    private static final int CARD_NOT_SUPPORTED = 3;
+    private static final int CARD_ERROR = 4;
+
     private static final String ALIAS_MAINACTIVITY = ".ui.MainActivityTagDetectionAlias";
-    public static final String INTENT_MAINACTIVITY = "com.example.nfctagrw.ui.MainActivity";
 
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
-                case CARD_INIT:
-                    Log.i(TAG, "Card initialize");
-                    mCard.prepare(MainActivity.this);
+                case CARD_INIT_ERROR:
+                case CARD_ERROR:
+                    Log.i(TAG, "Card error");
+                    stopProgressDialog();
+                    mVibrator.vibrate(500);
+                    Toast.makeText(MainActivity.this,
+                            "Card cannot be initialized ", Toast.LENGTH_SHORT)
+                            .show();
+                    break;
+                case CARD_NOT_SUPPORTED:
+                    Log.i(TAG, "Card not supported");
+                    stopProgressDialog();
+                    mVibrator.vibrate(500);
+                    Toast.makeText(MainActivity.this, "Card not supported ",
+                            Toast.LENGTH_SHORT).show();
                     break;
                 case CARD_READY:
                     Log.i(TAG, "Card Connected");
+                    ((MyApplication) getApplication())
+                            .setCurrentCard(CardFactory.getCurrentCard());
                     stopProgressDialog();
                     startViewer();
                     break;
-
-//                case DEFAULT_ACTION_DONE:
-//                    stopProgressDialog();
-//                    startViewer();
-//                    break;
-//                    new Thread(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            // TODO Auto-generated method stub
-//                            try {
-//                                byte[] mAdfInfo = mCard.getCardReader()
-//                                        .transceive(mEmvreader.SELECT_PPSE);
-//                                Log.i(TAG,
-//                                        "mAdfInfo =  "
-//                                                + HexTool
-//                                                        .bytesToHexString(mAdfInfo));
-//                            } catch (IOException e) {
-//                                // TODO Auto-generated catch block
-//                                e.printStackTrace();
-//                            }
-//                            mHandler.sendEmptyMessage(ADF_SELECT_OVER);
-//                        }
-//                    }).start();
-//
-//                    break;
-//                case ADF_SELECT_OVER:
-//                    Log.i(TAG, "ADF selected");
-//                    mEmvreader = new EMVReader(mCard.getCardReader(), null,
-//                            mAdfInfo);
-//                    mEmvreader.doTrace = mEMVReadDebug;
-//
-//                    new Thread(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            // TODO Auto-generated method stub
-//                            try {
-//                                mEmvreader.read();
-//                                ((MyApplication) getApplication())
-//                                        .setEMVCardEntity(mEmvreader
-//                                                .getEMVCardEntity());
-//
-//                                mHandler.sendEmptyMessage(START_TAGVIEWER);
-//                            } catch (IOException e) {
-//                                // TODO Auto-generated catch block
-//                                e.printStackTrace();
-//                                mEMVReadSucceed = false;
-//                                EMVCardEntity entity = mEmvreader
-//                                        .getEMVCardEntity();
-//                                entity.excepMsg = e.getMessage();
-//                                ((MyApplication) getApplication())
-//                                        .setEMVCardEntity(entity);
-//                                mHandler.sendEmptyMessage(START_TAGVIEWER);
-//                            }
-//                        }
-//
-//                    }).start();
-//                    break;
-//                case START_TAGVIEWER:
-//                    stopProgressDialog();
-//                    startViewer();
-//                    break;
                 default:
                     break;
             }
@@ -126,6 +83,7 @@ public class MainActivity extends Activity implements CardAccessListener {
         setContentView(R.layout.activity_main);
 
         mVibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+        mCardFactory = new CardFactory(this, this);
         mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this,
                 getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .setComponent(getComponentName()), 0);
@@ -177,10 +135,6 @@ public class MainActivity extends Activity implements CardAccessListener {
         super.onPause();
         Log.i(TAG, "onPause");
         mNfcAdapter.disableForegroundDispatch(this);
-
-        if (mCard != null) {
-            mCard.close();
-        }
     }
 
     public void onNewIntent(Intent intent) {
@@ -191,10 +145,10 @@ public class MainActivity extends Activity implements CardAccessListener {
     private void processIntentRaw(Intent intent) {
         Log.i(TAG, "processIntentRaw");
 
-        mCard = CardFactory.getCurrentCard(intent);
-        ((MyApplication) getApplication()).setCurrentCard(mCard);
         startProgressDialog();
-        mHandler.sendEmptyMessage(CARD_INIT);
+        if (!mCardFactory.prepare(intent)) {
+            mHandler.sendEmptyMessage(CARD_INIT_ERROR);
+        }
     }
 
     public void closeApp(View view) {
@@ -227,15 +181,30 @@ public class MainActivity extends Activity implements CardAccessListener {
     }
 
     @Override
-    public void cardReady() {
-        // TODO Auto-generated method stub
-        mHandler.sendEmptyMessage(CARD_READY);
-    }
-
-    @Override
     public void transceiveDone() {
         // TODO Auto-generated method stub
 
+    }
+
+    @Override
+    public void result(state s) {
+        // TODO Auto-generated method stub
+        switch (s) {
+            case UNSUPPORT:
+                mHandler.sendEmptyMessage(CARD_NOT_SUPPORTED);
+                break;
+
+            case READY:
+                mHandler.sendEmptyMessage(CARD_READY);
+                break;
+
+            case ERROR:
+            case INTERRUPTED:
+                mHandler.sendEmptyMessage(CARD_ERROR);
+                break;
+            default:
+                break;
+        }
     }
 
 }
