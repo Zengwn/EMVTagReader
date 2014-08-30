@@ -2,7 +2,6 @@ package com.example.nfctagrw.ui;
 
 import com.example.nfctagrw.MyApplication;
 import com.example.nfctagrw.R;
-import com.example.nfctagrw.card.base.Card;
 import com.example.nfctagrw.card.base.Card.CardAccessListener;
 import com.example.nfctagrw.card.base.Card.state;
 import com.example.nfctagrw.card.base.CardFactory;
@@ -137,6 +136,11 @@ public class MainActivity extends Activity implements CardAccessListener {
         mNfcAdapter.disableForegroundDispatch(this);
     }
 
+    public void finish() {
+        super.finish();
+        overridePendingTransition(R.anim.push_right_in, R.anim.push_right_out);
+    }
+
     public void onNewIntent(Intent intent) {
         Log.i(TAG, "onNewIntent");
         processIntentRaw(intent);
@@ -146,6 +150,12 @@ public class MainActivity extends Activity implements CardAccessListener {
         Log.i(TAG, "processIntentRaw");
 
         startProgressDialog();
+
+        if (!intent.hasExtra(NfcAdapter.EXTRA_TAG)) {
+            stopProgressDialog();
+            return;
+        }
+
         if (!mCardFactory.prepare(intent)) {
             mHandler.sendEmptyMessage(CARD_INIT_ERROR);
         }
@@ -191,15 +201,18 @@ public class MainActivity extends Activity implements CardAccessListener {
         // TODO Auto-generated method stub
         switch (s) {
             case UNSUPPORT:
+                Log.i(TAG, "Callback CARD_UNSUPPORT");
                 mHandler.sendEmptyMessage(CARD_NOT_SUPPORTED);
                 break;
 
             case READY:
+                Log.i(TAG, "Callback CARD_READY");
                 mHandler.sendEmptyMessage(CARD_READY);
                 break;
 
             case ERROR:
             case INTERRUPTED:
+                Log.i(TAG, "Callback CARD_ERROR");
                 mHandler.sendEmptyMessage(CARD_ERROR);
                 break;
             default:

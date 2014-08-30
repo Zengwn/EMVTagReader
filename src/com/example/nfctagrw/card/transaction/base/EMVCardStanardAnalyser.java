@@ -45,29 +45,38 @@ public class EMVCardStanardAnalyser {
         return aid;
     }
 
-    public String getRid(){
+    public String getRid() {
         String aid = HexTool.bytesToHexString(mEmvreader.aid);
         String rid = aid.substring(0, 10);
         Log.i(TAG, "RID : " + rid);
         return rid;
     }
-    
-    public String getIssuer(){
+
+    public String getIssuer() {
         return mEmvreader.issuer;
     }
-    
-    public String getPan(){
+
+    public String getPan() {
         return mEmvreader.pan;
     }
-    
-    public int getExpiryYear(){
+
+    public int getExpiryYear() {
         return mEmvreader.expiryYear;
     }
-    
-    public int getExpiryMonth(){
+
+    public int getExpiryMonth() {
         return mEmvreader.expiryMonth;
     }
-    
+
+    public String getDisplayContents() {
+        Log.i(TAG, "getDisplayContents");
+        StringBuilder contents = new StringBuilder();
+        for (EMVReader.EnumCallback c : mEmvreader.mObjectList) {
+            contents.append(c.toString());
+        }
+        return contents.toString();
+    }
+
     class cardreader implements CardReader {
         @Override
         public byte[] transceive(byte[] apdu) throws IOException {

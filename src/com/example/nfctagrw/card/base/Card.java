@@ -1,5 +1,7 @@
 package com.example.nfctagrw.card.base;
 
+import java.io.IOException;
+
 import com.example.nfctagrw.card.transaction.base.EMVCardStanardAnalyser;
 
 import android.content.Context;
@@ -115,12 +117,23 @@ public class Card {
         return mTransactionHandler.getRid();
     }
 
+    public String getDisplayContents() {
+        return mTransactionHandler.getDisplayContents();
+    }
+
     public Bitmap getRepresentImg() {
         return null;
     }
 
     public void close() {
-
+        if (mNfcObjHolder.isConnected()) {
+            try {
+                mNfcObjHolder.close();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
     }
 
     public IsoDep getNfcHolder() {

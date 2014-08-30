@@ -33,6 +33,7 @@ public class CardFactory {
     public boolean prepare(Intent intent) {
 
         Log.i(TAG, "prepare ");
+
         if (!intent.hasExtra(NfcAdapter.EXTRA_TAG))
             return false;
 
@@ -65,20 +66,15 @@ public class CardFactory {
                     return;
                 }
 
-                // Aid with highest priority
-//                if (!mCardBase.isSupportedCard(mCardBase.getAid())) {
-//                    mCallback.result(state.UNSUPPORT);
-//                    return;
-//                }
                 mCurrentCard = getCard(mCardBase, mCardBase.getRid());
-                
-                if(mCurrentCard == null){
+
+                if (mCurrentCard == null) {
                     mCallback.result(state.ERROR);
                     return;
-                }else{
+                } else {
                     mCallback.result(state.READY);
                 }
-                    
+
             }
         }).start();
 

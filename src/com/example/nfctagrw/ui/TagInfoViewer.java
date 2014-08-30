@@ -2,9 +2,6 @@ package com.example.nfctagrw.ui;
 
 import com.example.nfctagrw.R;
 import com.example.nfctagrw.card.base.Card;
-import com.example.nfctagrw.data.DataEntity;
-import com.example.nfctagrw.data.EMVCardEntity;
-import com.example.nfctagrw.util.HexTool;
 import com.example.nfctagrw.MyApplication;
 
 import android.app.Activity;
@@ -24,7 +21,6 @@ import android.widget.TextView;
 public class TagInfoViewer extends Activity {
     public static final String TAG = TagInfoViewer.class.getSimpleName();
 
-    private EMVCardEntity mEMVCardEntity;
     private Card mCard;
     private ImageView mCardView;
     private TextView mCardInfo;
@@ -107,8 +103,14 @@ public class TagInfoViewer extends Activity {
             mCardPan.setText(mCard.getPan());
             mCardExpriyDate.setText(mCard.getExpiryMonth() + " / "
                     + mCard.getExpiryYear());
+            mCardInfo.setText(mCard.getDisplayContents());
         } catch (Exception e) {
             Log.e(TAG, "No card information!");
         }
+    }
+
+    public void finish() {
+        super.finish();
+        overridePendingTransition(R.anim.push_right_in, R.anim.push_right_out);
     }
 }
